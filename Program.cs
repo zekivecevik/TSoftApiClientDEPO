@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews(); // MVC desteği
 builder.Services.AddControllers();
+builder.Services.AddSingleton<WarehouseService>();
 
 // ============================================================================
 // SESSION SUPPORT (for web authentication state)

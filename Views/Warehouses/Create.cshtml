@@ -1,0 +1,33 @@
+﻿@{
+    ViewData["Title"] = "Yeni Depo";
+}
+
+<div class="page-container">
+    <div class="section-header">
+        <h1 class="section-title">➕ Yeni Depo Oluştur</h1>
+        <a href="/Warehouses" class="btn btn-secondary">← Geri Dön</a>
+    </div>
+
+    <div class="cards-container" style="max-width: 600px; margin: 0 auto;">
+        <form method="post">
+            <div class="form-group">
+                <label class="form-label">📝 Depo Kodu *</label>
+                <input type="text" name="Code" class="form-control" placeholder="DEPO-03" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">🏭 Depo Adı *</label>
+                <input type="text" name="Name" class="form-control" placeholder="Üçüncü Depo" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">📍 Konum *</label>
+                <input type="text" name="Location" class="form-control" placeholder="İzmir" required>
+            </div>
+
+            <button type="submit" class="btn btn-success" style="width: 100%;">
+                ✅ Depo Oluştur
+            </button>
+        </form>
+    </div>
+</div>
