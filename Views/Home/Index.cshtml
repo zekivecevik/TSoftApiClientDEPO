@@ -1,0 +1,405 @@
+@using TSoftApiClient.Models
+@using TSoftApiClient.Controllers
+@{
+    ViewData["Title"] = "Dashboard";
+
+    string FormatCurrency(decimal value)
+    {
+        if (value >= 1000000)
+            return $"₺{(value / 1000000m):N1}M";
+        if (value >= 1000)
+            return $"₺{(value / 1000m):N1}K";
+        return $"₺{value:N0}";
+    }
+
+    string FormatPercent(decimal value)
+    {
+        return $"{value:N1}%";
+    }
+
+    string FormatNumber(int value)
+    {
+        if (value >= 1000000)
+            return $"{(value / 1000000.0):N1}M";
+        if (value >= 1000)
+            return $"{(value / 1000.0):N1}K";
+        return value.ToString("N0");
+    }
+}
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+    <div class="stats-container" style="justify-content: center; overflow-x: auto; flex-wrap: wrap; gap: 16px;">
+
+        <!-- Sipariş Stats -->
+        <div class="stat-mini">
+            <div class="stat-icon blue">🛍️</div>
+            <div class="stat-content">
+                <span class="stat-label">Bugün</span>
+                <span class="stat-value-mini">@ViewBag.OrdersToday</span>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon purple">💰</div>
+            <div class="stat-content">
+                <span class="stat-label">Bugün Ciro</span>
+                <span class="stat-value-mini">@FormatCurrency((decimal)ViewBag.RevenueToday)</span>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon red">🚫</div>
+            <div class="stat-content">
+                <span class="stat-label">Tükenen Ürünler</span>
+                <span class="stat-value-mini">@ViewBag.OutOfStockCount</span>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon warning">⚠️</div>
+            <div class="stat-content">
+                <span class="stat-label">Kritik Stok</span>
+                <span class="stat-value-mini">@ViewBag.LowStockCount</span>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon blue">📦</div>
+            <div class="stat-content">
+                <span class="stat-label">İşlemde</span>
+                <span class="stat-value-mini">@ViewBag.ProcessingOrders</span>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon green">✅</div>
+            <div class="stat-content">
+                <span class="stat-label">Aktif Ürün</span>
+                <span class="stat-value-mini">@ViewBag.ActiveProducts</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-container">
+    @if (!string.IsNullOrEmpty(ViewBag.Error))
+    {
+        <div class="alert alert-danger">
+            ❌ @ViewBag.Error
+        </div>
+    }
+
+    <div class="section-header">
+        <h1 class="section-title">📊 Dashboard</h1>
+        <div class="section-actions">
+            <select id="timeFilter" class="form-select" style="width: auto;" onchange="changeTimeFilter()">
+                <option value="today">Bugün</option>
+                <option value="week">Bu Hafta</option>
+                <option value="month" selected>Bu Ay</option>
+                <option value="all">Tümü</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- ========== 1. ÖZET KUTUCUKLAR ========== -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-bottom: 32px;">
+
+        <!-- Toplam Sipariş -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 32px; color: white; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+            <div style="position: relative; z-index: 1;">
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Toplam Sipariş</div>
+                <div style="font-size: 48px; font-weight: 800; margin-bottom: 4px;">@FormatNumber(ViewBag.TotalOrders)</div>
+                <div style="font-size: 13px; opacity: 0.8;">
+                    Bu Hafta: <strong>@ViewBag.OrdersThisWeek</strong> • Bu Ay: <strong>@ViewBag.OrdersThisMonth</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toplam Ciro -->
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 16px; padding: 32px; color: white; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+            <div style="position: relative; z-index: 1;">
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Toplam Ciro</div>
+                <div style="font-size: 48px; font-weight: 800; margin-bottom: 4px;">@FormatCurrency((decimal)ViewBag.TotalRevenue)</div>
+                <div style="font-size: 13px; opacity: 0.8;">
+                    Bu Hafta: <strong>@FormatCurrency((decimal)ViewBag.RevenueThisWeek)</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Müşteri İstatistikleri -->
+        <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 16px; padding: 32px; color: white; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+            <div style="position: relative; z-index: 1;">
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Toplam Müşteri</div>
+                <div style="font-size: 48px; font-weight: 800; margin-bottom: 4px;">@FormatNumber(ViewBag.TotalCustomers)</div>
+                <div style="font-size: 13px; opacity: 0.8;">
+                    Yeni (Bu Hafta): <strong>@ViewBag.NewCustomersThisWeek</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stok -->
+        <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 16px; padding: 32px; color: white; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+            <div style="position: relative; z-index: 1;">
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Toplam Stok</div>
+                <div style="font-size: 48px; font-weight: 800; margin-bottom: 4px;">@FormatNumber(ViewBag.TotalStock)</div>
+                <div style="font-size: 13px; opacity: 0.8;">
+                    @ViewBag.TotalProducts ürün
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ========== 2. BİLDİRİM & UYARILAR ========== -->
+    @if (ViewBag.Alerts != null && ((List<DashboardAlert>)ViewBag.Alerts).Count > 0)
+    {
+        <div class="cards-container" style="margin-bottom: 32px;">
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text-primary);">🚨 Bildirimler & Uyarılar</h3>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+                @foreach (var alert in (List<DashboardAlert>)ViewBag.Alerts)
+                {
+                    var borderColor = alert.Type switch
+                    {
+                        "danger" => "var(--danger)",
+                        "warning" => "var(--warning)",
+                        "success" => "var(--success)",
+                        "primary" => "var(--primary)",
+                        "info" => "var(--info)",
+                        _ => "var(--text-secondary)"
+                    };
+
+                    <a href="@alert.Link" style="text-decoration: none;">
+                        <div style="background: var(--bg-main); border-left: 4px solid @borderColor; border-radius: 8px; padding: 16px; transition: all 0.2s; cursor: pointer;"
+                             onmouseover="this.style.transform='translateX(4px)'"
+                             onmouseout="this.style.transform='translateX(0)'">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 32px;">@alert.Icon</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">
+                                        @alert.Title
+                                    </div>
+                                    <div style="font-size: 13px; color: var(--text-secondary);">
+                                        @alert.Message
+                                    </div>
+                                </div>
+                                <div style="font-size: 24px; font-weight: 800; color: @borderColor;">
+                                    @alert.Count
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- ========== 3. GRAFİKLER ========== -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
+
+        <!-- Sol: Son 5 Gün Ciro -->
+        <div class="cards-container">
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 24px; color: var(--text-primary);">
+                📈 Son 5 Gün Ciro Grafiği
+            </h3>
+
+            @{
+                var chartData = (List<(DateTime Date, decimal Revenue, int OrderCount)>)(ViewBag.Last7DaysChart ?? new List<(DateTime, decimal, int)>());
+                var maxRevenue = chartData.Count > 0 && chartData.Max(d => d.Revenue) > 0 ? chartData.Max(d => d.Revenue) : 1;
+            }
+
+            <div style="display: grid; grid-template-columns: repeat(@chartData.Count, 1fr); gap: 8px; height: 200px; align-items: end;">
+                @foreach (var day in chartData)
+                {
+                    var heightPercent = maxRevenue > 0 ? (int)((day.Revenue / maxRevenue) * 100) : 0;
+                    if (heightPercent < 5 && day.Revenue > 0) heightPercent = 5;
+
+                    <div style="position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center;">
+                        <div style="width: 100%; height: @(heightPercent)%; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); border-radius: 4px 4px 0 0; transition: all 0.3s;"
+                             title="@day.Date.ToString("dd MMM"): @FormatCurrency(day.Revenue) (@day.OrderCount sipariş)">
+                        </div>
+                        <div style="position: absolute; bottom: -30px; font-size: 11px; color: var(--text-secondary); text-align: center; white-space: nowrap;">
+                            @day.Date.ToString("dd MMM")
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div style="margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary);">
+                <span>Toplam Sipariş: @chartData.Sum(d => d.OrderCount)</span>
+                <span>Toplam Ciro: @FormatCurrency(chartData.Sum(d => d.Revenue))</span>
+            </div>
+        </div>
+
+        <!-- Sağ: En Çok Satan 5 Ürün -->
+        <div class="cards-container">
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text-primary);">
+                🏆 En Çok Satan 5 Ürün
+                <small style="font-size: 12px; font-weight: 400; color: var(--text-secondary); margin-left: 8px;">
+                    (Son @(ViewBag.TopSellingOrderCount ?? 30) sipariş)
+                </small>
+            </h3>
+
+            @{
+                var topProducts = (List<TopSellingProduct>)(ViewBag.TopSellingProducts ?? new List<TopSellingProduct>());
+                var colors = new[] { "#667eea", "#f093fb", "#4facfe", "#43e97b", "#f5576c" };
+            }
+
+            @if (topProducts.Count > 0)
+            {
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    @for (int i = 0; i < topProducts.Count; i++)
+                    {
+                        var product = topProducts[i];
+                        var maxValue = topProducts.Any() ? topProducts.Max(p => p.TotalSold) : 1;
+                        var widthPercent = maxValue > 0 ? ((decimal)product.TotalSold / maxValue * 100) : 0;
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                                <span style="color: var(--text-primary); font-weight: 600;">@product.ProductName</span>
+                                <span style="color: @colors[i]; font-weight: 700;">@product.TotalSold adet</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: var(--bg-main); border-radius: 4px; overflow: hidden;">
+                                <div style="width: @(widthPercent)%; height: 100%; background: @colors[i]; transition: width 0.5s;"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                    <div style="font-size: 48px; margin-bottom: 12px;">📊</div>
+                    <div style="font-size: 14px;">Henüz satış verisi yok</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- ========== 4. SON İŞLEMLER ========== -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
+
+        <!-- Son Siparişler -->
+        <div class="cards-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin: 0; color: var(--text-primary);">⏳ Son Siparişler</h3>
+                <a href="/Orders" style="color: var(--primary); font-size: 13px; font-weight: 600; text-decoration: none;">Tümünü Gör →</a>
+            </div>
+
+            @{
+                var recentOrders = (List<Order>)(ViewBag.RecentOrders ?? new List<Order>());
+            }
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                @foreach (var order in recentOrders)
+                {
+                    <div style="padding: 12px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="font-size: 13px; font-weight: 700; color: var(--primary);">@order.OrderCode</span>
+                            <span style="font-size: 13px; font-weight: 700; color: var(--success);">
+                                @FormatCurrency(decimal.TryParse(order.OrderTotalPrice ?? order.Total, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : 0)
+                            </span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">
+                            @order.CustomerName
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                            @(DateTime.TryParse(order.OrderDate, out var d) ? d.ToString("dd MMM yyyy HH:mm") : order.OrderDate)
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Kritik Stok Ürünleri - FIXED: 10 ürün, ortalanmış görünüm -->
+        <div class="cards-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin: 0; color: var(--text-primary);">⚠️ Kritik Stok</h3>
+                <a href="/Products?filter=lowstock" style="color: var(--danger); font-size: 13px; font-weight: 600; text-decoration: none;">Tümünü Gör →</a>
+            </div>
+
+            @{
+                var lowStockProducts = (List<Product>)(ViewBag.LowStockProducts ?? new List<Product>());
+            }
+
+            @if (lowStockProducts.Count > 0)
+            {
+                <div style="display: flex; flex-direction: column; gap: 12px; align-items: stretch;">
+                    @foreach (var product in lowStockProducts.Take(10))
+                    {
+                        <div style="padding: 12px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border); border-left: 3px solid var(--warning);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">@product.ProductName</span>
+                                <span style="font-size: 14px; font-weight: 800; color: var(--warning);">
+                                    @(int.TryParse(product.Stock, out var s) ? s : 0)
+                                </span>
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">
+                                Kod: @product.ProductCode
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                    <div style="font-size: 48px; margin-bottom: 12px;">✅</div>
+                    <div style="font-size: 14px;">Kritik stok yok</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- ========== 5. HIZLI EYLEMLER ========== -->
+    <div class="cards-container">
+        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text-primary);">⚡ Hızlı Eylemler</h3>
+
+        <div class="product-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <a href="/Products/Create" class="product-card" style="text-decoration: none; cursor: pointer; transition: all 0.3s;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+                <div class="product-name">Yeni Ürün Ekle</div>
+                <p style="color: var(--text-secondary); font-size: 14px;">Stokları güncel tut</p>
+            </a>
+
+            <a href="/Orders" class="product-card" style="text-decoration: none; cursor: pointer; transition: all 0.3s;">
+                <div style="font-size: 48px; margin-bottom: 16px;">🛒</div>
+                <div class="product-name">Siparişleri Yönet</div>
+                <p style="color: var(--text-secondary); font-size: 14px;">@ViewBag.PendingOrders bekleyen sipariş</p>
+            </a>
+
+            <a href="/Products?filter=lowstock" class="product-card" style="text-decoration: none; cursor: pointer; transition: all 0.3s;">
+                <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                <div class="product-name">Kritik Stoklar</div>
+                <p style="color: var(--text-secondary); font-size: 14px;">@ViewBag.LowStockCount ürün kritik seviyede</p>
+            </a>
+
+            <a href="/Categories" class="product-card" style="text-decoration: none; cursor: pointer; transition: all 0.3s;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+                <div class="product-name">Kategoriler</div>
+                <p style="color: var(--text-secondary); font-size: 14px;">Ürün organizasyonu</p>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .product-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 12px 32px rgba(124, 58, 237, 0.3);
+    }
+</style>
+
+@section Scripts {
+    <script>
+        function changeTimeFilter() {
+            const filter = document.getElementById('timeFilter').value;
+            console.log('Filter changed to:', filter);
+        }
+    </script>
+}

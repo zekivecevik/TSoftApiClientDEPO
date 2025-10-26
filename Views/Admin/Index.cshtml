@@ -1,0 +1,284 @@
+﻿@using TSoftApiClient.Models
+@{
+    ViewData["Title"] = "Admin Panel";
+    var users = (List<UserInfo>)ViewBag.Users;
+    var logs = (List<AuditLog>)ViewBag.Logs;
+    var stats = ViewBag.Stats;
+    var userActivity = ViewBag.UserActivity;
+}
+
+<div class="stats-bar">
+    <div class="stats-container" style="justify-content: center; overflow-x: auto;">
+        <div class="stat-mini">
+            <div class="stat-icon purple">👥</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Kullanıcı</div>
+                <div class="stat-value-mini">@users.Count</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon blue">📋</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Log</div>
+                <div class="stat-value-mini">@stats.TotalLogs</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon green">📦</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Ürün</div>
+                <div class="stat-value-mini">@ViewBag.TotalProducts</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon red">🛒</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Sipariş</div>
+                <div class="stat-value-mini">@ViewBag.TotalOrders</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon warning">👤</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Müşteri</div>
+                <div class="stat-value-mini">@ViewBag.TotalCustomers</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-container">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">✅ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">❌ @TempData["Error"]</div>
+    }
+
+    <div class="section-header">
+        <h1 class="section-title">👑 Admin Panel</h1>
+    </div>
+
+    <!-- Admin Tools Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 32px;">
+
+        <!-- Kullanıcı Yönetimi -->
+        <a href="/Admin/Users" style="text-decoration: none;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 32px; color: white; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                <div style="position: relative; z-index: 1;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
+                    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Kullanıcı Yönetimi</h3>
+                    <p style="font-size: 14px; opacity: 0.9; margin-bottom: 16px;">Kullanıcıları ekle, düzenle, sil</p>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span>Toplam: @users.Count</span>
+                        <span>Aktif: @ViewBag.ActiveUsers</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Audit Logs -->
+        <a href="/Admin/Logs" style="text-decoration: none;">
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 16px; padding: 32px; color: white; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                <div style="position: relative; z-index: 1;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Audit Logs</h3>
+                    <p style="font-size: 14px; opacity: 0.9; margin-bottom: 16px;">Tüm sistem loglarını incele</p>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span>Toplam: @stats.TotalLogs</span>
+                        <span>Başarı: @string.Format("{0:N0}%", stats.SuccessRate)</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Database Yönetimi -->
+        <a href="/Admin/Database" style="text-decoration: none;">
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 16px; padding: 32px; color: white; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                <div style="position: relative; z-index: 1;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">💾</div>
+                    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Database Yönetimi</h3>
+                    <p style="font-size: 14px; opacity: 0.9; margin-bottom: 16px;">Veritabanı bakım işlemleri</p>
+                    <div style="font-size: 13px;">
+                        <span>Temizlik, Yedekleme, Export</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- API Status -->
+        <a href="/Admin/ApiStatus" style="text-decoration: none;">
+            <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 16px; padding: 32px; color: white; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                <div style="position: relative; z-index: 1;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🔌</div>
+                    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">API Durumu</h3>
+                    <p style="font-size: 14px; opacity: 0.9; margin-bottom: 16px;">T-Soft API bağlantı testi</p>
+                    <div style="font-size: 13px;">
+                        <span>Performans & Sağlık</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- System Info -->
+        <a href="/Admin/SystemInfo" style="text-decoration: none;">
+            <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 16px; padding: 32px; color: white; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                <div style="position: relative; z-index: 1;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚙️</div>
+                    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Sistem Bilgisi</h3>
+                    <p style="font-size: 14px; opacity: 0.9; margin-bottom: 16px;">Sunucu & Uygulama detayları</p>
+                    <div style="font-size: 13px;">
+                        <span>Performans & Kaynak Kullanımı</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Settings -->
+        <a href="/Admin/Settings" style="text-decoration: none;">
+            <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); border-radius: 16px; padding: 32px; color: #333; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -20px; right: -20px; width: 150px; height: 150px; background: rgba(255,255,255,0.3); border-radius: 50%;"></div>
+                <div style="position: relative; z-index: 1;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🎛️</div>
+                    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Ayarlar</h3>
+                    <p style="font-size: 14px; opacity: 0.8; margin-bottom: 16px;">Sistem yapılandırması</p>
+                    <div style="font-size: 13px; opacity: 0.8;">
+                        <span>API, Güvenlik, Genel</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+    </div>
+
+    <!-- En Aktif Kullanıcılar -->
+    <div class="cards-container" style="margin-bottom: 32px;">
+        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px;">🔥 En Aktif Kullanıcılar</h3>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+            @foreach (var activity in userActivity)
+            {
+                var user = users.FirstOrDefault(u => u.Username == activity.Username);
+                var roleIcon = user?.Role switch
+                {
+                    "Admin" => "👑",
+                    "Manager" => "👨‍💼",
+                    "Viewer" => "👁️",
+                    _ => "👤"
+                };
+
+                <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <div style="font-size: 32px;">@roleIcon</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">
+                                @activity.Username
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">
+                                @user?.Role
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border);">
+                        <span style="font-size: 12px; color: var(--text-secondary);">İşlem Sayısı</span>
+                        <span style="font-size: 20px; font-weight: 700; color: var(--primary);">@activity.ActionCount</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+                        Son: @activity.LastActivity.ToString("dd.MM.yyyy HH:mm")
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Son Loglar -->
+    <div class="cards-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="font-size: 18px; font-weight: 700; margin: 0;">📋 Son İşlemler</h3>
+            <a href="/Admin/Logs" class="btn btn-secondary">Tüm Loglar →</a>
+        </div>
+
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">Durum</th>
+                        <th>Tarih</th>
+                        <th>Kullanıcı</th>
+                        <th>Aksiyon</th>
+                        <th>Entity</th>
+                        <th>Detay</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var log in logs)
+                    {
+                        <tr>
+                            <td style="text-align: center;">
+                                @if (log.Success)
+                                {
+                                    <span style="font-size: 20px;">✅</span>
+                                }
+                                else
+                                {
+                                    <span style="font-size: 20px;">❌</span>
+                                }
+                            </td>
+                            <td>
+                                <div style="font-size: 13px; font-weight: 600;">
+                                    @log.Timestamp.ToString("dd.MM.yyyy")
+                                </div>
+                                <div style="font-size: 11px; color: var(--text-secondary);">
+                                    @log.Timestamp.ToString("HH:mm:ss")
+                                </div>
+                            </td>
+                            <td>
+                                <strong>@log.Username</strong>
+                                @if (log.UserId.HasValue)
+                                {
+                                    <div style="font-size: 11px; color: var(--text-secondary);">ID: @log.UserId</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge badge-info">@log.Action</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-secondary">@log.Entity</span>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(log.Details))
+                                {
+                                    <div style="font-size: 12px; color: var(--text-secondary);">
+                                        @(log.Details.Length > 50 ? log.Details.Substring(0, 50) + "..." : log.Details)
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary);">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    a:has(div) {
+        display: block;
+    }
+
+        a:has(div) > div:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+        }
+</style>

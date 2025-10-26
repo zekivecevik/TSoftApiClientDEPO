@@ -1,0 +1,108 @@
+@{
+    ViewData["Title"] = "Dashboard Debug - En Çok Satan Ürünler";
+}
+
+<div class="main-container">
+    <div class="section-header">
+        <h1 class="section-title">🔍 Dashboard Debug - En Çok Satan Ürünler</h1>
+        <button class="btn btn-primary" onclick="location.reload()">
+            🔄 Yeniden Test Et
+        </button>
+    </div>
+
+    <!-- Debug Logs -->
+    <div class="cards-container">
+        <h3 style="margin-bottom: 16px; font-size: 18px;">📋 Detaylı Analiz</h3>
+
+        <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;">
+            @foreach (var log in (List<string>)ViewBag.Logs)
+            {
+                if (log.StartsWith("✅"))
+                {
+                    <div style="color: var(--success); font-weight: bold;">@log</div>
+                }
+                else if (log.StartsWith("❌") || log.StartsWith("💥"))
+                {
+                    <div style="color: var(--danger); font-weight: bold;">@log</div>
+                }
+                else if (log.StartsWith("⚠️"))
+                {
+                    <div style="color: var(--warning); font-weight: bold;">@log</div>
+                }
+                else if (log.StartsWith("💡"))
+                {
+                    <div style="color: #3B82F6; font-weight: bold; margin-top: 8px;">@log</div>
+                }
+                else if (log.Contains("━"))
+                {
+                    <div style="color: var(--text-secondary);">@log</div>
+                }
+                else if (log.StartsWith("     "))
+                {
+                    <div style="color: var(--text-secondary); margin-left: 40px;">@log</div>
+                }
+                else if (log.StartsWith("  "))
+                {
+                    <div style="color: var(--text-secondary); margin-left: 20px;">@log</div>
+                }
+                else if (log.StartsWith("📦") || log.StartsWith("📊") || log.StartsWith("🛒") || log.StartsWith("🏆") || log.StartsWith("🔍"))
+                {
+                    <div style="color: var(--primary); font-weight: bold; margin-top: 12px;">@log</div>
+                }
+                else
+                {
+                    <div style="color: var(--text-primary);">@log</div>
+                }
+            }
+        </div>
+    </div>
+
+    @if (ViewBag.TopProducts != null)
+    {
+        var topProducts = (List<KeyValuePair<string, int>>)ViewBag.TopProducts;
+
+        <div class="cards-container" style="margin-top: 24px;">
+            <h3 style="margin-bottom: 16px; font-size: 18px;">🏆 En Çok Satan 5 Ürün</h3>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                @foreach (var product in topProducts)
+                {
+                    var maxValue = topProducts.Any() ? topProducts.Max(p => p.Value) : 1;
+                    var widthPercent = maxValue > 0 ? ((decimal)product.Value / maxValue * 100) : 0;
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                            <span style="color: var(--text-primary); font-weight: 600;">@product.Key</span>
+                            <span style="color: var(--primary); font-weight: 700;">@product.Value adet</span>
+                        </div>
+                        <div style="width: 100%; height: 8px; background: var(--bg-main); border-radius: 4px; overflow: hidden;">
+                            <div style="width: @(widthPercent)%; height: 100%; background: var(--primary); transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Çözüm Önerileri -->
+    <div class="cards-container" style="margin-top: 24px;">
+        <h3 style="margin-bottom: 16px; font-size: 18px;">💡 Ne Yapmalıyım?</h3>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="alert" style="background: rgba(59, 130, 246, 0.1); border-color: var(--info); color: var(--info);">
+                <strong>ℹ️ Eğer siparişlerde OrderDetails VE API çağrısı da çalışmıyorsa:</strong><br><br>
+                1. T-Soft API'nin order details endpoint'i için yetkiniz olmayabilir<br>
+                2. Alternatif olarak ana order nesnesinde ürün bilgisi olabilir<br>
+                3. Yukarıdaki logları bana gönder, alternatif çözüm bulalım
+            </div>
+
+            <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                <strong style="color: var(--warning);">🔍 Kontrol Listesi:</strong><br><br>
+                • <strong>OrderDetails null mı?</strong> → API çağrısı yapılacak<br>
+                • <strong>API çağrısı başarısız mı?</strong> → Yetki sorunu olabilir<br>
+                • <strong>ProductCode field'ı boş mu?</strong> → Alternatif field arayacağız<br>
+                • <strong>Quantity parse edilemiyor mu?</strong> → Format sorunu
+            </div>
+        </div>
+    </div>
+</div>

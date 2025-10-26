@@ -1,0 +1,196 @@
+﻿@{
+    ViewData["Title"] = "Profil";
+    var user = (UserInfo)ViewBag.User;
+}
+
+<div class="page-container">
+    <div class="section-header">
+        <h1 class="section-title">👤 Profil</h1>
+        <div class="section-actions">
+            <button class="btn btn-secondary" onclick="regenerateApiKey()">
+                🔄 API Key Yenile
+            </button>
+            <a href="/Logout" class="btn btn-danger">
+                🚪 Çıkış Yap
+            </a>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Kullanıcı Bilgileri -->
+        <div class="cards-container">
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px;">📋 Kullanıcı Bilgileri</h3>
+
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Kullanıcı ID</div>
+                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">@user.Id</div>
+                </div>
+
+                <div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Kullanıcı Adı</div>
+                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">@user.Username</div>
+                </div>
+
+                <div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Ad Soyad</div>
+                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">@user.FullName</div>
+                </div>
+
+                <div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">E-posta</div>
+                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">@user.Email</div>
+                </div>
+
+                <div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Rol</div>
+                    <div>
+                        @{
+                            var roleBadge = user.Role switch
+                            {
+                                "Admin" => "badge-danger",
+                                "Manager" => "badge-warning",
+                                "Viewer" => "badge-info",
+                                _ => "badge-secondary"
+                            };
+                            var roleIcon = user.Role switch
+                            {
+                                "Admin" => "👑",
+                                "Manager" => "👨‍💼",
+                                "Viewer" => "👁️",
+                                _ => "👤"
+                            };
+                        }
+                        <span class="badge @roleBadge" style="font-size: 14px; padding: 8px 16px;">
+                            @roleIcon @user.Role
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Key -->
+        <div class="cards-container">
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px;">🔑 API Key</h3>
+
+            <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+                    API Anahtarınız
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text"
+                           id="apiKeyInput"
+                           value="@user.ApiKey"
+                           readonly
+                           style="flex: 1; background: transparent; border: none; color: var(--primary); font-family: 'Courier New', monospace; font-size: 13px; outline: none;" />
+                    <button class="btn btn-secondary" onclick="copyApiKey()">
+                        📋 Kopyala
+                    </button>
+                </div>
+            </div>
+
+            <div class="alert" style="margin-top: 16px; background: rgba(245, 158, 11, 0.1); border-color: var(--warning); color: var(--warning);">
+                <strong>⚠️ Önemli:</strong> API Key'inizi güvenli tutun ve kimseyle paylaşmayın!
+            </div>
+
+            <div style="margin-top: 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                <strong>API Kullanımı:</strong><br />
+                Authorization header'ına Bearer token ekleyin veya api_key parametresi olarak gönderin.
+            </div>
+        </div>
+    </div>
+
+    <!-- Yetki Bilgileri -->
+    <div class="cards-container" style="margin-top: 24px;">
+        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px;">🔐 Yetki Durumu</h3>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+            @{
+                var permissions = user.Role switch
+                {
+                    "Admin" => new[]
+                    {
+                        ("Tüm Ürünleri Görüntüleme", true),
+                        ("Ürün Ekleme/Düzenleme/Silme", true),
+                        ("Siparişleri Görüntüleme", true),
+                        ("Sipariş Yönetimi", true),
+                        ("Kullanıcı Yönetimi", true),
+                        ("Audit Log Görüntüleme", true),
+                        ("Sistem Ayarları", true)
+                        },
+                    "Manager" => new[]
+                    {
+                        ("Tüm Ürünleri Görüntüleme", true),
+                        ("Ürün Ekleme/Düzenleme", true),
+                        ("Siparişleri Görüntüleme", true),
+                        ("Sipariş Yönetimi", true),
+                        ("Kullanıcı Yönetimi", false),
+                        ("Audit Log Görüntüleme", true),
+                        ("Sistem Ayarları", false)
+                        },
+                    _ => new[]
+                    {
+                        ("Tüm Ürünleri Görüntüleme", true),
+                        ("Ürün Ekleme/Düzenleme/Silme", false),
+                        ("Siparişleri Görüntüleme", true),
+                        ("Sipariş Yönetimi", false),
+                        ("Kullanıcı Yönetimi", false),
+                        ("Audit Log Görüntüleme", false),
+                        ("Sistem Ayarları", false)
+                        }
+                };
+            }
+
+            @foreach (var (permission, hasAccess) in permissions)
+            {
+                <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 24px;">@(hasAccess ? "✅" : "❌")</span>
+                    <div style="flex: 1;">
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                            @permission
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                            @(hasAccess ? "Erişim var" : "Erişim yok")
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyApiKey() {
+        const input = document.getElementById('apiKeyInput');
+        input.select();
+        document.execCommand('copy');
+
+        alert('✅ API Key kopyalandı!');
+    }
+
+    async function regenerateApiKey() {
+        if (!confirm('API Key\'inizi yenilemek istediğinizden emin misiniz? Eski key kullanılamaz hale gelecek!')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/auth/regenerate-apikey', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                document.getElementById('apiKeyInput').value = data.apiKey;
+                alert('✅ API Key yenilendi!');
+            } else {
+                alert('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
+            }
+        } catch (error) {
+            alert('❌ API Key yenilenemedi: ' + error.message);
+        }
+    }
+</script>

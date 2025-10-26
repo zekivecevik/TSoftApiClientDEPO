@@ -1,0 +1,111 @@
+@model List<Category>
+@{
+    ViewData["Title"] = "Kategoriler";
+}
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+    <div class="stats-container">
+        <div class="stat-mini">
+            <div class="stat-icon green">📁</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Kategori</div>
+                <div class="stat-value-mini">@Model.Count</div>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon purple">✅</div>
+            <div class="stat-content">
+                <div class="stat-label">Aktif Kategoriler</div>
+                <div class="stat-value-mini">@Model.Count(c => c.IsActive == "1")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Container -->
+<div class="main-container">
+    @if (!string.IsNullOrEmpty(ViewBag.Error))
+    {
+        <div class="alert alert-danger">
+            ❌ @ViewBag.Error
+        </div>
+    }
+
+    <div class="section-header">
+        <h1 class="section-title">📁 Kategoriler</h1>
+        <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="search" 
+                   id="search-input" 
+                   class="search-input" 
+                   placeholder="Kategori ara..." 
+                   onkeyup="filterCategories()">
+        </div>
+    </div>
+
+    @if (Model.Count > 0)
+    {
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Kategori Kodu</th>
+                        <th>Kategori Adı</th>
+                        <th>Üst Kategori</th>
+                        <th>Durum</th>
+                    </tr>
+                </thead>
+                <tbody id="category-table">
+                    @foreach (var category in Model)
+                    {
+                        <tr data-name="@category.CategoryName?.ToLower()" data-code="@category.CategoryCode?.ToLower()">
+                            <td><span class="badge badge-info">@category.CategoryCode</span></td>
+                            <td><strong>@category.CategoryName</strong></td>
+                            <td>@(category.ParentCategoryCode ?? "-")</td>
+                            <td>
+                                @if (category.IsActive == "1")
+                                {
+                                    <span class="badge badge-success">Aktif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-danger">Pasif</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="cards-container">
+            <div class="empty-state">
+                <h3>Kategori bulunamadı</h3>
+                <p>Henüz kategori tanımlanmamış</p>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    function filterCategories() {
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+        const rows = document.querySelectorAll('#category-table tr');
+        
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name') || '';
+            const code = row.getAttribute('data-code') || '';
+            if (name.includes(searchTerm) || code.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>
+}

@@ -1,0 +1,564 @@
+@model List<Order>
+@{
+    ViewData["Title"] = "Siparişler";
+
+    string FormatPrice(string? price)
+    {
+        if (string.IsNullOrEmpty(price)) return "₺0,00";
+        if (decimal.TryParse(price, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var result))
+        {
+            return $"₺{result.ToString("N2", new System.Globalization.CultureInfo("tr-TR"))}";
+        }
+        return $"₺{price}";
+    }
+
+    string FormatPriceText(string? price)
+    {
+        if (string.IsNullOrEmpty(price) || !decimal.TryParse(price, out var amount)) return "";
+
+        string[] ones = { "", "bir", "iki", "üç", "dört", "beş", "altı", "yedi", "sekiz", "dokuz" };
+        string[] tens = { "", "on", "yirmi", "otuz", "kırk", "elli", "altmış", "yetmiş", "seksen", "doksan" };
+        string[] hundreds = { "", "yüz", "ikiyüz", "üçyüz", "dörtyüz", "beşyüz", "altıyüz", "yediyüz", "sekizyüz", "dokuzyüz" };
+
+        int intPart = (int)amount;
+        if (intPart >= 1000000) return "";
+        if (intPart == 0) return "sıfır tl";
+
+        string result = "";
+
+        if (intPart >= 1000)
+        {
+            int thousands = intPart / 1000;
+            if (thousands == 1) result += "bin";
+            else if (thousands < 10) result += ones[thousands] + "bin";
+            else if (thousands < 100)
+            {
+                int tensDigit = thousands / 10;
+                int onesDigit = thousands % 10;
+                result += tens[tensDigit] + ones[onesDigit] + "bin";
+            }
+            intPart %= 1000;
+        }
+
+        if (intPart >= 100)
+        {
+            result += hundreds[intPart / 100];
+            intPart %= 100;
+        }
+
+        if (intPart >= 10)
+        {
+            result += tens[intPart / 10];
+            intPart %= 10;
+        }
+
+        if (intPart > 0)
+        {
+            result += ones[intPart];
+        }
+
+        return result + "tl";
+    }
+
+    var currentPage = ViewBag.CurrentPage ?? 1;
+    var pageSize = ViewBag.PageSize ?? 100;
+    var hasMore = ViewBag.HasMore ?? false;
+}
+
+<div class="stats-bar">
+    <div class="stats-container" style="justify-content: center;">
+        <div class="stat-mini">
+            <div class="stat-icon blue">🛒</div>
+            <div class="stat-content">
+                <div class="stat-label">Sayfa Başı</div>
+                <div class="stat-value-mini">@pageSize sipariş</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon purple">📄</div>
+            <div class="stat-content">
+                <div class="stat-label">Sayfa</div>
+                <div class="stat-value-mini">@currentPage</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon green">💰</div>
+            <div class="stat-content">
+                <div class="stat-label">Bu Sayfada Tutar</div>
+                <div class="stat-value-mini">
+                    @{
+                        decimal totalAmount = 0;
+                        foreach (var o in Model)
+                        {
+                            if (decimal.TryParse(o.OrderTotalPrice ?? o.Total ?? o.TotalAmount ?? "0", System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amt))
+                                totalAmount += amt;
+                        }
+                        var formatted = totalAmount.ToString("N2", new System.Globalization.CultureInfo("tr-TR"));
+                    }
+                    ₺@formatted
+                </div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon red">📦</div>
+            <div class="stat-content">
+                <div class="stat-label">Bu Sayfada Ürün</div>
+                <div class="stat-value-mini">@Model.Sum(o => o.ItemCount)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-container">
+    @if (!string.IsNullOrEmpty(ViewBag.Error))
+    {
+        <div class="alert alert-danger" style="margin-bottom: 24px;">
+            <strong>❌ Hata:</strong> @ViewBag.Error
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(ViewBag.Warning))
+    {
+        <div class="alert" style="margin-bottom: 24px; background: rgba(245, 158, 11, 0.1); border-color: var(--warning); color: var(--warning);">
+            <strong>⚠️ Uyarı:</strong> @ViewBag.Warning
+        </div>
+    }
+
+    <div class="section-header">
+        <h1 class="section-title">🛒 Siparişler</h1>
+        <div class="section-actions">
+            <span style="color: var(--text-secondary); font-size: 14px; margin-right: 16px;">
+                @Model.Count sipariş gösteriliyor
+            </span>
+        </div>
+    </div>
+
+    <!-- Gelişmiş Filtre -->
+    <div class="cards-container" style="margin-bottom: 24px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">🔍 Sipariş Ara</label>
+                <input type="search" id="searchInput" class="form-control" placeholder="Sipariş no, müşteri adı...">
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">📊 Sipariş Durumu</label>
+                <select id="statusFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="1">Beklemede</option>
+                    <option value="2">İşlemde</option>
+                    <option value="3">Tamamlandı</option>
+                    <option value="4">İptal</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">📦 Paketleme</label>
+                <select id="supplyFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="hazırlanıyor">Hazırlanıyor</option>
+                    <option value="hazır">Hazır</option>
+                    <option value="gönderildi">Gönderildi</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">💳 Ödeme Tipi</label>
+                <select id="paymentFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    @foreach (var paymentType in Model.Select(o => o.PaymentType).Distinct().Where(p => !string.IsNullOrEmpty(p)))
+                    {
+                        <option value="@paymentType">@paymentType</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">📍 Şehir</label>
+                <select id="cityFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    @foreach (var city in Model.Select(o => o.City ?? o.ShippingCity).Distinct().Where(c => !string.IsNullOrEmpty(c)).OrderBy(c => c))
+                    {
+                        <option value="@city">@city</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">📅 Tarih Aralığı</label>
+                <select id="dateFilter" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="today">Bugün</option>
+                    <option value="week">Bu Hafta</option>
+                    <option value="month">Bu Ay</option>
+                    <option value="year">Bu Yıl</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; gap: 8px;">
+            <button class="btn btn-secondary" onclick="resetFilters()">🔄 Filtreleri Temizle</button>
+            <button class="btn btn-primary" onclick="exportFiltered()">📥 Excel'e Aktar</button>
+        </div>
+    </div>
+
+    @if (Model.Count > 0)
+    {
+        <div class="table-container">
+            <table class="table" id="ordersTable">
+                <thead>
+                    <tr>
+                        <th style="text-align: center;">Ürün Sayısı</th>
+                        <th style="text-align: center;">Sipariş No</th>
+                        <th style="text-align: center;">Üye Adı</th>
+                        <th style="text-align: center;">Tarih</th>
+                        <th style="text-align: center;">Şehir</th>
+                        <th style="text-align: center;">Tutar</th>
+                        <th style="text-align: center;">Ödeme Tipi</th>
+                        <th style="text-align: center;">Kargo Firması</th>
+                        <th style="text-align: center;">Paketleme Durumu</th>
+                        <th style="text-align: center;">Sipariş Süreci</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model)
+                    {
+                        <tr data-order='@System.Text.Json.JsonSerializer.Serialize(new {
+                            orderCode = order.OrderCode ?? order.OrderId,
+                            customerName = order.CustomerName ?? order.CustomerCode,
+                            customerEmail = order.CustomerUsername,
+                            orderDate = order.OrderDate,
+                            city = order.City ?? order.ShippingCity,
+                            statusId = order.OrderStatusId,
+                            supplyStatus = order.SupplyStatus?.ToLower(),
+                            paymentType = order.PaymentType
+                        })'>
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                <span class="badge badge-primary" style="font-size: 16px; font-weight: 700; padding: 6px 14px;">
+                                    @order.ItemCount
+                                </span>
+                            </td>
+
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                <span class="badge badge-info" style="font-size: 14px; padding: 6px 12px;">
+                                    @(order.OrderCode ?? order.OrderId ?? "N/A")
+                                </span>
+                            </td>
+
+                            <td style="border-right: 1px solid var(--border);">
+                                <div style="line-height: 1.8;">
+                                    <strong style="font-size: 15px; font-weight: 700;">
+                                        @(order.CustomerName ?? order.CustomerCode ?? "Bilinmiyor")
+                                    </strong>
+                                    @if (!string.IsNullOrEmpty(order.CustomerUsername))
+                                    {
+                                        <br />
+                                        <small style="color: var(--text-secondary); font-size: 14px;">
+                                            <span style="font-size: 15px;">📧</span> @order.CustomerUsername
+                                        </small>
+                                    }
+                                    @if (!string.IsNullOrEmpty(order.CustomerPhone))
+                                    {
+                                        <br />
+                                        <small style="color: var(--text-secondary); font-size: 14px;">
+                                            <span style="font-size: 15px;">📱</span> @order.CustomerPhone
+                                        </small>
+                                    }
+                                </div>
+                            </td>
+
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                @if (!string.IsNullOrEmpty(order.OrderDate))
+                                {
+                                    if (DateTime.TryParse(order.OrderDate, out var dt))
+                                    {
+                                        <span style="font-size: 14px; font-weight: 600;">@dt.ToString("dd.MM.yyyy")</span>
+                                        <br />
+                                        <small style="color: var(--text-secondary); font-size: 13px;">@dt.ToString("HH:mm")</small>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size: 14px;">@order.OrderDate</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary); font-size: 13px;">N/A</span>
+                                }
+                            </td>
+
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                <span style="font-size: 14px; font-weight: 600;">
+                                    @(order.City ?? order.ShippingCity ?? "N/A")
+                                </span>
+                            </td>
+
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                @{
+                                    var price = order.OrderTotalPrice ?? order.Total ?? order.TotalAmount ?? "0";
+                                    var priceText = FormatPriceText(price);
+                                }
+                                <strong style="color: var(--success); font-size: 16px; font-weight: 700; display: block;">
+                                    @FormatPrice(price)
+                                </strong>
+                                @if (!string.IsNullOrEmpty(priceText))
+                                {
+                                    <small style="color: var(--text-secondary); font-size: 12px; font-style: italic;">
+                                        (@priceText)
+                                    </small>
+                                }
+                            </td>
+
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                <div style="line-height: 1.6;">
+                                    @if (!string.IsNullOrEmpty(order.PaymentType))
+                                    {
+                                        <span class="badge badge-secondary" style="font-size: 13px; padding: 5px 10px; display: inline-block; margin-bottom: 4px;">
+                                            @order.PaymentType
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-secondary" style="font-size: 13px; padding: 5px 10px;">N/A</span>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(order.Bank))
+                                    {
+                                        <br />
+                                        <small style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">
+                                            @order.Bank
+                                        </small>
+                                    }
+                                </div>
+                            </td>
+
+                            <td style="min-width: 180px; text-align: center; border-right: 1px solid var(--border);">
+                                @if (!string.IsNullOrEmpty(order.Cargo))
+                                {
+                                    <span class="badge badge-info" style="font-size: 13px; white-space: normal; line-height: 1.5; padding: 6px 10px; display: inline-block; max-width: 100%;">
+                                        @order.Cargo
+                                    </span>
+                                }
+                                else if (!string.IsNullOrEmpty(order.CargoCode))
+                                {
+                                    <span class="badge badge-info" style="font-size: 13px; padding: 6px 10px;">@order.CargoCode</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-info" style="font-size: 13px; padding: 6px 10px;">N/A</span>
+                                }
+                            </td>
+
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                @if (!string.IsNullOrEmpty(order.SupplyStatus))
+                                {
+                                    var supplyBadge = (order.SupplyStatus.ToLower()) switch
+                                    {
+                                        "hazırlanıyor" => "badge-warning",
+                                        "hazirlaniyor" => "badge-warning",
+                                        "preparing" => "badge-warning",
+                                        "hazır" => "badge-info",
+                                        "hazir" => "badge-info",
+                                        "ready" => "badge-info",
+                                        "gönderildi" => "badge-success",
+                                        "gonderildi" => "badge-success",
+                                        "shipped" => "badge-success",
+                                        _ => "badge-secondary"
+                                    };
+                                    <span class="badge @supplyBadge" style="font-size: 13px; padding: 6px 12px;">@order.SupplyStatus</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-secondary" style="font-size: 13px; padding: 6px 12px;">N/A</span>
+                                }
+                            </td>
+
+                            <td style="text-align: center;">
+                                @{
+                                    var statusBadge = (order.OrderStatusId) switch
+                                    {
+                                        "3" => "badge-success",
+                                        "1" => "badge-warning",
+                                        "2" => "badge-info",
+                                        "4" => "badge-danger",
+                                        _ => "badge-secondary"
+                                    };
+                                    var statusText = (order.OrderStatusId) switch
+                                    {
+                                        "3" => "Tamamlandı",
+                                        "1" => "Beklemede",
+                                        "2" => "İşlemde",
+                                        "4" => "İptal",
+                                        _ => order.OrderStatus ?? order.Status ?? $"ID: {order.OrderStatusId}"
+                                    };
+                                }
+                                <span class="badge @statusBadge" style="font-size: 13px; padding: 6px 12px;">@statusText</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ⚡ PAGINATION CONTROLS -->
+        @if (hasMore || currentPage > 1)
+        {
+            <div style="margin-top: 32px; display: flex; justify-content: center; align-items: center; gap: 16px;">
+                
+                @if (currentPage > 1)
+                {
+                    <a href="/Orders?page=@(currentPage - 1)&limit=@pageSize" class="btn btn-secondary">
+                        ← Önceki Sayfa
+                    </a>
+                }
+
+                <div style="padding: 12px 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; font-weight: 600;">
+                    Sayfa @currentPage
+                </div>
+
+                @if (hasMore)
+                {
+                    <a href="/Orders?page=@(currentPage + 1)&limit=@pageSize" class="btn btn-primary">
+                        Sonraki Sayfa →
+                    </a>
+                }
+            </div>
+        }
+
+        <!-- Filtered count -->
+        <div style="margin-top: 16px; text-align: center; color: var(--text-secondary);">
+            <span id="filterInfo">@Model.Count sipariş gösteriliyor</span>
+        </div>
+    }
+    else
+    {
+        <div class="cards-container">
+            <div class="empty-state">
+                <div style="font-size: 64px; margin-bottom: 16px;">🛒</div>
+                <h3>Sipariş bulunamadı</h3>
+                <p style="color: var(--text-secondary);">Henüz sipariş bulunmuyor</p>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        let allRows = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const table = document.getElementById('ordersTable');
+            if (!table) return;
+            
+            allRows = Array.from(table.querySelectorAll('tbody tr'));
+            
+            // Event listeners
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            document.getElementById('supplyFilter').addEventListener('change', applyFilters);
+            document.getElementById('paymentFilter').addEventListener('change', applyFilters);
+            document.getElementById('cityFilter').addEventListener('change', applyFilters);
+            document.getElementById('dateFilter').addEventListener('change', applyFilters);
+        });
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const supplyFilter = document.getElementById('supplyFilter').value.toLowerCase();
+            const paymentFilter = document.getElementById('paymentFilter').value;
+            const cityFilter = document.getElementById('cityFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            
+            let visibleCount = 0;
+            
+            allRows.forEach(row => {
+                const data = JSON.parse(row.getAttribute('data-order'));
+                let show = true;
+                
+                // Search filter
+                if (searchTerm) {
+                    const searchText = `${data.orderCode} ${data.customerName} ${data.customerEmail}`.toLowerCase();
+                    if (!searchText.includes(searchTerm)) show = false;
+                }
+                
+                // Status filter
+                if (statusFilter && data.statusId !== statusFilter) show = false;
+                
+                // Supply status filter
+                if (supplyFilter && (!data.supplyStatus || !data.supplyStatus.includes(supplyFilter))) show = false;
+                
+                // Payment filter
+                if (paymentFilter && data.paymentType !== paymentFilter) show = false;
+                
+                // City filter
+                if (cityFilter && data.city !== cityFilter) show = false;
+                
+                // Date filter
+                if (dateFilter && data.orderDate) {
+                    const orderDate = new Date(data.orderDate);
+                    const now = new Date();
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    
+                    switch(dateFilter) {
+                        case 'today':
+                            if (orderDate < today) show = false;
+                            break;
+                        case 'week':
+                            const weekAgo = new Date(today);
+                            weekAgo.setDate(weekAgo.getDate() - 7);
+                            if (orderDate < weekAgo) show = false;
+                            break;
+                        case 'month':
+                            const monthAgo = new Date(today);
+                            monthAgo.setMonth(monthAgo.getMonth() - 1);
+                            if (orderDate < monthAgo) show = false;
+                            break;
+                        case 'year':
+                            const yearAgo = new Date(today);
+                            yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+                            if (orderDate < yearAgo) show = false;
+                            break;
+                    }
+                }
+                
+                row.style.display = show ? '' : 'none';
+                if (show) visibleCount++;
+            });
+            
+            document.getElementById('filterInfo').textContent = 
+                `${visibleCount} sipariş gösteriliyor (Bu sayfada toplam ${allRows.length})`;
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('supplyFilter').value = '';
+            document.getElementById('paymentFilter').value = '';
+            document.getElementById('cityFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+            applyFilters();
+        }
+
+        function exportFiltered() {
+            // Simple CSV export of visible rows
+            const visibleRows = allRows.filter(row => row.style.display !== 'none');
+            
+            let csv = 'Sipariş No,Müşteri,Tarih,Şehir,Tutar,Ödeme,Durum\n';
+            
+            visibleRows.forEach(row => {
+                const data = JSON.parse(row.getAttribute('data-order'));
+                const cells = row.querySelectorAll('td');
+                
+                csv += `"${data.orderCode}","${data.customerName}","${data.orderDate}","${data.city}",`;
+                csv += `"${cells[5].textContent.trim()}","${data.paymentType}","${cells[9].textContent.trim()}"\n`;
+            });
+            
+            // Download
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `siparisler_sayfa_${@currentPage}_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+    </script>
+}

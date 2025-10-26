@@ -1,0 +1,233 @@
+﻿@model List<AuditLog>
+@{
+    ViewData["Title"] = "Audit Logs";
+    var stats = ViewBag.Stats;
+    var currentPage = ViewBag.CurrentPage ?? 1;
+    var pageSize = ViewBag.PageSize ?? 100;
+}
+
+<div class="stats-bar">
+    <div class="stats-container" style="justify-content: center;">
+        <div class="stat-mini">
+            <div class="stat-icon blue">📋</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Log</div>
+                <div class="stat-value-mini">@stats.TotalLogs</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon green">✅</div>
+            <div class="stat-content">
+                <div class="stat-label">Başarılı</div>
+                <div class="stat-value-mini">@stats.SuccessfulActions</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon red">❌</div>
+            <div class="stat-content">
+                <div class="stat-label">Başarısız</div>
+                <div class="stat-value-mini">@stats.FailedActions</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon purple">📊</div>
+            <div class="stat-content">
+                <div class="stat-label">Başarı Oranı</div>
+                <div class="stat-value-mini">@string.Format("{0:N1}%", stats.SuccessRate)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-container">
+    <div class="section-header">
+        <h1 class="section-title">📋 Audit Logs</h1>
+        <div class="section-actions">
+            <a href="/Admin" class="btn btn-secondary">← Geri Dön</a>
+        </div>
+    </div>
+
+    <div class="cards-container" style="margin-bottom: 24px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">👤 Kullanıcı</label>
+                <input type="search" id="userFilter" class="form-control" placeholder="Kullanıcı ara..." onkeyup="applyFilters()">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">🎯 Aksiyon</label>
+                <select id="actionFilter" class="form-select" onchange="applyFilters()">
+                    <option value="">Tümü</option>
+                    <option value="Login">Login</option>
+                    <option value="Logout">Logout</option>
+                    <option value="View">View</option>
+                    <option value="Create">Create</option>
+                    <option value="Update">Update</option>
+                    <option value="Delete">Delete</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">📦 Entity</label>
+                <select id="entityFilter" class="form-select" onchange="applyFilters()">
+                    <option value="">Tümü</option>
+                    <option value="Auth">Auth</option>
+                    <option value="Product">Product</option>
+                    <option value="Order">Order</option>
+                    <option value="Customer">Customer</option>
+                    <option value="Category">Category</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">✅ Durum</label>
+                <select id="statusFilter" class="form-select" onchange="applyFilters()">
+                    <option value="">Tümü</option>
+                    <option value="success">Başarılı</option>
+                    <option value="failed">Başarısız</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; gap: 8px;">
+            <button class="btn btn-secondary" onclick="resetFilters()">🔄 Filtreleri Temizle</button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="table" id="logsTable">
+            <thead>
+                <tr>
+                    <th style="width: 60px; text-align: center;">Durum</th>
+                    <th>Tarih & Saat</th>
+                    <th>Kullanıcı</th>
+                    <th>Aksiyon</th>
+                    <th>Entity</th>
+                    <th>Entity ID</th>
+                    <th>Detay</th>
+                    <th>IP Address</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model)
+                {
+                    <tr data-user="@log.Username.ToLower()"
+                        data-action="@log.Action.ToLower()"
+                        data-entity="@log.Entity.ToLower()"
+                        data-status="@(log.Success ? "success" : "failed")">
+                        <td style="text-align: center;">
+                            @if (log.Success)
+                            {
+                                <span style="font-size: 24px;">✅</span>
+                            }
+                            else
+                            {
+                                <span style="font-size: 24px;">❌</span>
+                            }
+                        </td>
+                        <td>
+                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                                @log.Timestamp.ToString("dd.MM.yyyy")
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">
+                                @log.Timestamp.ToString("HH:mm:ss")
+                            </div>
+                        </td>
+                        <td>
+                            <strong style="font-size: 14px;">@log.Username</strong>
+                            @if (log.UserId.HasValue)
+                            {
+                                <br />
+                                <small style="color: var(--text-secondary); font-size: 12px;">ID: @log.UserId</small>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge badge-info" style="font-size: 13px;">@log.Action</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-secondary" style="font-size: 13px;">@log.Entity</span>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(log.EntityId))
+                            {
+                                <span class="badge badge-primary" style="font-size: 12px;">@log.EntityId</span>
+                            }
+                            else
+                            {
+                                <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(log.Details))
+                            {
+                                <div style="font-size: 13px; color: var(--text-secondary); max-width: 300px;">
+                                    @(log.Details.Length > 80 ? log.Details.Substring(0, 80) + "..." : log.Details)
+                                </div>
+                            }
+                            else
+                            {
+                                <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                            }
+                        </td>
+                        <td>
+                            <small style="font-family: 'Courier New', monospace; font-size: 12px; color: var(--text-secondary);">
+                                @log.IpAddress
+                            </small>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 16px; text-align: center; color: var(--text-secondary);">
+        <span id="filterInfo">@Model.Count log gösteriliyor</span>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allRows = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            allRows = Array.from(document.querySelectorAll('#logsTable tbody tr'));
+        });
+
+        function applyFilters() {
+            const userFilter = document.getElementById('userFilter').value.toLowerCase();
+            const actionFilter = document.getElementById('actionFilter').value.toLowerCase();
+            const entityFilter = document.getElementById('entityFilter').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            let visibleCount = 0;
+
+            allRows.forEach(row => {
+                const user = row.getAttribute('data-user') || '';
+                const action = row.getAttribute('data-action') || '';
+                const entity = row.getAttribute('data-entity') || '';
+                const status = row.getAttribute('data-status') || '';
+
+                let show = true;
+
+                if (userFilter && !user.includes(userFilter)) show = false;
+                if (actionFilter && action !== actionFilter) show = false;
+                if (entityFilter && entity !== entityFilter) show = false;
+                if (statusFilter && status !== statusFilter) show = false;
+
+                row.style.display = show ? '' : 'none';
+                if (show) visibleCount++;
+            });
+
+            document.getElementById('filterInfo').textContent =
+                `${visibleCount} log gösteriliyor (toplam ${allRows.length})`;
+        }
+
+        function resetFilters() {
+            document.getElementById('userFilter').value = '';
+            document.getElementById('actionFilter').value = '';
+            document.getElementById('entityFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            applyFilters();
+        }
+    </script>
+}

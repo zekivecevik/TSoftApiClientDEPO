@@ -1,0 +1,585 @@
+@model List<Product>
+@{
+    ViewData["Title"] = "Ürünler";
+
+    // ✅ Esnek IsActive kontrolü
+    bool IsProductActive(Product product)
+    {
+        if (string.IsNullOrEmpty(product.IsActive))
+            return true;
+
+        var value = product.IsActive.ToLower().Trim();
+        return value == "1" ||
+               value == "true" ||
+               value == "yes" ||
+               value == "active" ||
+               value == "aktif";
+    }
+
+    string FormatPrice(string? price, string? currency = "TL")
+    {
+        if (string.IsNullOrEmpty(price)) return "₺0,00";
+        if (decimal.TryParse(price, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var result))
+        {
+            var symbol = currency?.ToUpper() switch
+            {
+                "USD" => "$",
+                "EUR" => "€",
+                "GBP" => "£",
+                _ => "₺"
+            };
+            return $"{symbol}{result.ToString("N2", new System.Globalization.CultureInfo("tr-TR"))}";
+        }
+        return $"₺{price}";
+    }
+
+    string GetImageUrl(Product product)
+    {
+        if (!string.IsNullOrEmpty(product.ThumbnailUrl)) return product.ThumbnailUrl;
+        if (!string.IsNullOrEmpty(product.ImageUrl)) return product.ImageUrl;
+        if (!string.IsNullOrEmpty(product.Image)) return product.Image;
+        if (product.Images != null && product.Images.Count > 0)
+        {
+            var img = product.Images[0];
+            return img.ThumbnailUrl ?? img.Thumbnail ?? img.ImageUrl ?? img.Image ?? "";
+        }
+        return "";
+    }
+}
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+    <div class="stats-container" style="justify-content: center;">
+        <div class="stat-mini">
+            <div class="stat-icon purple">📦</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Ürün</div>
+                <div class="stat-value-mini">@Model.Count</div>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon green">✅</div>
+            <div class="stat-content">
+                <div class="stat-label">Aktif Ürünler</div>
+                <div class="stat-value-mini">@Model.Count(p => IsProductActive(p))</div>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon blue">📊</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Stok</div>
+                <div class="stat-value-mini">@Model.Sum(p => int.TryParse(p.Stock, out var s) ? s : 0)</div>
+            </div>
+        </div>
+
+        <div class="stat-mini">
+            <div class="stat-icon red">💰</div>
+            <div class="stat-content">
+                <div class="stat-label">Stok Değeri</div>
+                <div class="stat-value-mini">
+                    @{
+                        decimal totalValue = 0;
+                        foreach (var p in Model)
+                        {
+                            if (int.TryParse(p.Stock, out var stock) &&
+                            decimal.TryParse(p.SellingPrice ?? p.Price, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var price))
+                            {
+                                totalValue += stock * price;
+                            }
+                        }
+
+                        if (totalValue >= 1000000)
+                        {
+                            <text>₺@((totalValue / 1000000m).ToString("N1"))M</text>
+                        }
+                        else if (totalValue >= 1000)
+                        {
+                            <text>₺@((totalValue / 1000m).ToString("N0"))K</text>
+                        }
+                        else
+                        {
+                            <text>₺@totalValue.ToString("N0")</text>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Container -->
+<div class="page-container">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">
+            ✅ @TempData["Success"]
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(ViewBag.Error))
+    {
+        <div class="alert alert-danger">
+            ❌ @ViewBag.Error
+        </div>
+    }
+
+    <div class="section-header">
+        <h1 class="section-title">📦 Ürünler</h1>
+        <div class="section-actions">
+            <a href="/ProductStatusDebug" class="btn btn-secondary" title="IsActive field debug">
+                🔍 Status Debug
+            </a>
+            <button class="btn btn-secondary" onclick="exportToExcel()">
+                📥 Excel'e Aktar
+            </button>
+            <a href="/Products/Create" class="btn btn-primary">
+                ➕ Yeni Ürün Ekle
+            </a>
+        </div>
+    </div>
+
+    <!-- Gelişmiş Filtreler -->
+    <div class="cards-container" style="margin-bottom: 24px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">🔍 Ürün Ara</label>
+                <input type="search" id="searchInput" class="form-control"
+                       placeholder="Kod, ad, marka..." onkeyup="applyFilters()">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">📁 Kategori</label>
+                <select id="categoryFilter" class="form-select" onchange="applyFilters()">
+                    <option value="">Tüm Kategoriler</option>
+                    @foreach (var category in (List<Category>)(ViewBag.Categories ?? new List<Category>()))
+                    {
+                        <option value="@category.CategoryCode">
+                            @(category.Path ?? category.CategoryName ?? category.CategoryCode)
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">🏷️ Marka</label>
+                <select id="brandFilter" class="form-select" onchange="applyFilters()">
+                    <option value="">Tüm Markalar</option>
+                    @foreach (var brand in (List<string>)(ViewBag.Brands ?? new List<string>()))
+                    {
+                        <option value="@brand">@brand</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">📊 Durum</label>
+                <select id="statusFilter" class="form-select" onchange="applyFilters()">
+                    <option value="">Tümü</option>
+                    <option value="active">Aktif</option>
+                    <option value="passive">Pasif</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">💰 Fiyat Aralığı</label>
+                <select id="priceFilter" class="form-select" onchange="applyFilters()">
+                    <option value="">Tümü</option>
+                    <option value="0-100">0-100 TL</option>
+                    <option value="100-500">100-500 TL</option>
+                    <option value="500-1000">500-1.000 TL</option>
+                    <option value="1000-5000">1.000-5.000 TL</option>
+                    <option value="5000+">5.000+ TL</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">📦 Stok Durumu</label>
+                <select id="stockFilter" class="form-select" onchange="applyFilters()">
+                    <option value="">Tümü</option>
+                    <option value="out">Tükendi (0)</option>
+                    <option value="low">Düşük (1-10)</option>
+                    <option value="medium">Orta (11-50)</option>
+                    <option value="high">Yüksek (50+)</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" onclick="resetFilters()">
+                🔄 Filtreleri Temizle
+            </button>
+            <span id="filterInfo" style="margin-left: auto; padding: 10px 0; color: var(--text-secondary); font-size: 14px;">
+                @Model.Count ürün gösteriliyor
+            </span>
+        </div>
+    </div>
+
+    @if (Model.Count > 0)
+    {
+        <!-- ✅ DATA TABLE (Siparişler gibi box içinde) -->
+        <div class="table-container">
+            <table class="table" id="productsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 80px; text-align: center;">Görsel</th>
+                        <th style="text-align: center;">Ürün Kodu</th>
+                        <th style="text-align: left;">Ürün Adı</th>
+                        <th style="text-align: center;">Kategori</th>
+                        <th style="text-align: center;">Marka</th>
+                        <th style="text-align: center;">Stok</th>
+                        <th style="text-align: center;">Durum</th>
+                        <th style="text-align: center;">Alış Fiyatı</th>
+                        <th style="text-align: center;">Satış Fiyatı</th>
+                        <th style="text-align: center;">Son Güncelleme</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var product in Model)
+                    {
+                        var isActive = IsProductActive(product);
+                        var stock = int.TryParse(product.Stock, out var stockVal) ? stockVal : 0;
+                        var stockClass = stock == 0 ? "badge-danger" : stock <= 10 ? "badge-warning" : stock <= 50 ? "badge-info" : "badge-success";
+
+                        <tr class="product-row"
+                            data-code="@(product.ProductCode?.ToLower())"
+                            data-name="@(product.ProductName?.ToLower())"
+                            data-category="@(product.DefaultCategoryCode?.ToLower())"
+                            data-brand="@(product.Brand?.ToLower())"
+                            data-status="@(isActive ? "active" : "passive")"
+                            data-price="@(decimal.TryParse(product.SellingPrice ?? product.Price, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : 0)"
+                            data-stock="@stock">
+
+                            <!-- Görsel -->
+                            <td style="text-align: center; padding: 8px; border-right: 1px solid var(--border);">
+                                @{
+                                    var imageUrl = GetImageUrl(product);
+                                }
+                                @if (!string.IsNullOrEmpty(imageUrl))
+                                {
+                                    <img src="@imageUrl"
+                                         alt="@product.ProductName"
+                                         style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div style="display: none; width: 60px; height: 60px; background: var(--bg-main); border-radius: 8px; align-items: center; justify-content: center; font-size: 24px;">
+                                        📦
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div style="width: 60px; height: 60px; background: var(--bg-main); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                                        📦
+                                    </div>
+                                }
+                            </td>
+
+                            <!-- Ürün Kodu -->
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                <span class="badge badge-info" style="font-size: 13px; padding: 6px 12px;">
+                                    @product.ProductCode
+                                </span>
+                            </td>
+
+                            <!-- Ürün Adı -->
+                            <td style="border-right: 1px solid var(--border);">
+                                <strong style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                                    @product.ProductName
+                                </strong>
+                                @if (!string.IsNullOrEmpty(product.ShortDescription))
+                                {
+                                    <br />
+                                    <small style="color: var(--text-secondary); font-size: 12px;">
+                                        @(product.ShortDescription.Length > 50 ? product.ShortDescription.Substring(0, 50) + "..." : product.ShortDescription)
+                                    </small>
+                                }
+                            </td>
+
+                            <!-- Kategori -->
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                @if (product.CategoryPath != null && product.CategoryPath.Count > 0)
+                                {
+                                    <span style="font-size: 12px; color: var(--text-secondary);">
+                                        @string.Join(" › ", product.CategoryPath)
+                                    </span>
+                                }
+                                else if (!string.IsNullOrEmpty(product.CategoryName))
+                                {
+                                    <span style="font-size: 12px; color: var(--text-secondary);">
+                                        @product.CategoryName
+                                    </span>
+                                }
+                                else if (!string.IsNullOrEmpty(product.DefaultCategoryCode))
+                                {
+                                    <span class="badge badge-secondary" style="font-size: 11px; padding: 4px 8px;">
+                                        @product.DefaultCategoryCode
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                                }
+                            </td>
+
+                            <!-- Marka -->
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                @if (!string.IsNullOrEmpty(product.Brand))
+                                {
+                                    <span class="badge badge-secondary" style="font-size: 12px; padding: 5px 10px;">
+                                        @product.Brand
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                                }
+                            </td>
+
+                            <!-- Stok -->
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                <span class="badge @stockClass" style="font-size: 14px; font-weight: 700; padding: 6px 12px;">
+                                    @stock
+                                </span>
+                                @if (!string.IsNullOrEmpty(product.StockUnit))
+                                {
+                                    <br />
+                                    <small style="color: var(--text-secondary); font-size: 11px;">@product.StockUnit</small>
+                                }
+                            </td>
+
+                            <!-- Durum -->
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                @if (isActive)
+                                {
+                                    <span class="badge badge-success" style="font-size: 12px; padding: 5px 10px;">
+                                        ✅ Aktif
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-danger" style="font-size: 12px; padding: 5px 10px;">
+                                        ❌ Pasif
+                                    </span>
+                                }
+                            </td>
+
+                            <!-- Alış Fiyatı -->
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                @if (!string.IsNullOrEmpty(product.BuyingPrice))
+                                {
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">
+                                        @FormatPrice(product.BuyingPrice, product.Currency)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                                }
+                            </td>
+
+                            <!-- Satış Fiyatı -->
+                            <td style="text-align: center; border-right: 1px solid var(--border);">
+                                <strong style="color: var(--success); font-size: 15px; font-weight: 700;">
+                                    @FormatPrice(product.SellingPrice ?? product.Price, product.Currency)
+                                </strong>
+                                @if (!string.IsNullOrEmpty(product.Vat) && product.Vat != "0")
+                                {
+                                    <br />
+                                    <small style="color: var(--text-secondary); font-size: 11px;">KDV: %@product.Vat</small>
+                                }
+                            </td>
+
+                            <!-- Son Güncelleme -->
+                            <td style="text-align: center;">
+                                @{
+                                    var updateDate = product.UpdateDate ?? product.UpdateDateTimeStamp ?? product.LastModified;
+                                }
+                                @if (!string.IsNullOrEmpty(updateDate))
+                                {
+                                    if (DateTime.TryParse(updateDate, out var dt))
+                                    {
+                                        <span style="font-size: 13px; font-weight: 600;">@dt.ToString("dd.MM.yyyy")</span>
+                                        <br />
+                                        <small style="color: var(--text-secondary); font-size: 11px;">@dt.ToString("HH:mm")</small>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size: 12px; color: var(--text-secondary);">@updateDate</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (ViewBag.HasMore == true)
+        {
+            <div style="margin-top: 32px; display: flex; justify-content: center; align-items: center; gap: 16px;">
+                @if (ViewBag.CurrentPage > 1)
+                {
+                    <a href="/Products?page=@(ViewBag.CurrentPage - 1)&limit=@ViewBag.PageSize" class="btn btn-secondary">
+                        ← Önceki Sayfa
+                    </a>
+                }
+
+                <div style="padding: 12px 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; font-weight: 600;">
+                    Sayfa @(ViewBag.CurrentPage ?? 1)
+                </div>
+
+                @if (ViewBag.HasMore == true)
+                {
+                    <a href="/Products?page=@((ViewBag.CurrentPage ?? 1) + 1)&limit=@ViewBag.PageSize" class="btn btn-primary">
+                        Sonraki Sayfa →
+                    </a>
+                }
+            </div>
+        }
+
+        <!-- Filtered count -->
+        <div style="margin-top: 16px; text-align: center; color: var(--text-secondary);">
+            <span id="filteredInfo">@Model.Count ürün gösteriliyor</span>
+        </div>
+    }
+    else
+    {
+        <div class="cards-container">
+            <div class="empty-state">
+                <div style="font-size: 64px; margin-bottom: 16px;">📦</div>
+                <h3>Henüz ürün bulunmuyor</h3>
+                <p style="color: var(--text-secondary);">İlk ürünü ekleyerek başlayın</p>
+                <a href="/Products/Create" class="btn btn-primary" style="margin-top: 16px;">
+                    ➕ Ürün Ekle
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        let allRows = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            allRows = Array.from(document.querySelectorAll('.product-row'));
+        });
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value.toLowerCase();
+            const brandFilter = document.getElementById('brandFilter').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priceFilter = document.getElementById('priceFilter').value;
+            const stockFilter = document.getElementById('stockFilter').value;
+
+            let visibleCount = 0;
+
+            allRows.forEach(row => {
+                const code = row.getAttribute('data-code') || '';
+                const name = row.getAttribute('data-name') || '';
+                const category = row.getAttribute('data-category') || '';
+                const brand = row.getAttribute('data-brand') || '';
+                const status = row.getAttribute('data-status') || '';
+                const price = parseFloat(row.getAttribute('data-price')) || 0;
+                const stock = parseInt(row.getAttribute('data-stock')) || 0;
+
+                let show = true;
+
+                if (searchTerm && !code.includes(searchTerm) && !name.includes(searchTerm) && !brand.includes(searchTerm)) {
+                    show = false;
+                }
+
+                if (categoryFilter && category !== categoryFilter) {
+                    show = false;
+                }
+
+                if (brandFilter && brand !== brandFilter) {
+                    show = false;
+                }
+
+                if (statusFilter && status !== statusFilter) {
+                    show = false;
+                }
+
+                if (priceFilter) {
+                    if (priceFilter === '0-100' && (price < 0 || price > 100)) show = false;
+                    if (priceFilter === '100-500' && (price < 100 || price > 500)) show = false;
+                    if (priceFilter === '500-1000' && (price < 500 || price > 1000)) show = false;
+                    if (priceFilter === '1000-5000' && (price < 1000 || price > 5000)) show = false;
+                    if (priceFilter === '5000+' && price < 5000) show = false;
+                }
+
+                if (stockFilter) {
+                    if (stockFilter === 'out' && stock !== 0) show = false;
+                    if (stockFilter === 'low' && (stock === 0 || stock > 10)) show = false;
+                    if (stockFilter === 'medium' && (stock < 11 || stock > 50)) show = false;
+                    if (stockFilter === 'high' && stock <= 50) show = false;
+                }
+
+                row.style.display = show ? '' : 'none';
+                if (show) visibleCount++;
+            });
+
+            document.getElementById('filterInfo').textContent =
+                `${visibleCount} ürün gösteriliyor (toplam ${allRows.length})`;
+            document.getElementById('filteredInfo').textContent =
+                `${visibleCount} ürün gösteriliyor (toplam ${allRows.length})`;
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('brandFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('priceFilter').value = '';
+            document.getElementById('stockFilter').value = '';
+            applyFilters();
+        }
+
+        function exportToExcel() {
+            const visibleRows = allRows.filter(row => row.style.display !== 'none');
+
+            let csv = 'Ürün Kodu,Ürün Adı,Kategori,Marka,Stok,Durum,Alış Fiyatı,Satış Fiyatı,Son Güncelleme\n';
+
+            visibleRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const code = cells[1].textContent.trim();
+                const name = cells[2].querySelector('strong').textContent.trim();
+                const category = cells[3].textContent.trim();
+                const brand = cells[4].textContent.trim();
+                const stock = cells[5].textContent.trim();
+                const status = cells[6].textContent.trim();
+                const buyingPrice = cells[7].textContent.trim();
+                const sellingPrice = cells[8].querySelector('strong').textContent.trim();
+                const update = cells[9].textContent.trim().replace(/\n/g, ' ');
+
+                csv += `"${code}","${name}","${category}","${brand}","${stock}","${status}","${buyingPrice}","${sellingPrice}","${update}"\n`;
+            });
+
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `urunler_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+    </script>
+}
+
+<style>
+    .product-row {
+        transition: all 0.2s ease;
+    }
+
+        .product-row:hover {
+            background: var(--bg-hover);
+            transform: translateX(4px);
+        }
+</style>

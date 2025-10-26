@@ -1,0 +1,177 @@
+@model CreateProductDto
+@{
+    ViewData["Title"] = "Yeni Ürün Ekle";
+}
+
+<!-- Main Container -->
+<div class="main-container">
+    <div class="section-header">
+        <h1 class="section-title">➕ Yeni Ürün Ekle</h1>
+        <a href="/Products" class="btn btn-secondary">
+            ← Geri Dön
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(ViewBag.Error))
+    {
+        <div class="alert alert-danger">
+            ❌ @ViewBag.Error
+        </div>
+    }
+
+    <div class="cards-container">
+        <form asp-action="Create" method="post">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+                <!-- Temel Bilgiler -->
+                <div>
+                    <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">📋 Temel Bilgiler</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Code">Ürün Kodu *</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="Code" 
+                               name="Code" 
+                               asp-for="Code"
+                               placeholder="PROD-001" 
+                               required />
+                        <span asp-validation-for="Code" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="Name">Ürün Adı *</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="Name" 
+                               name="Name" 
+                               asp-for="Name"
+                               placeholder="Ürün adını girin" 
+                               required />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="CategoryCode">Kategori *</label>
+                        <select class="form-select" 
+                                id="CategoryCode" 
+                                name="CategoryCode" 
+                                asp-for="CategoryCode"
+                                required>
+                            <option value="">Kategori seçin</option>
+                            @foreach (var category in (List<Category>)ViewBag.Categories)
+                            {
+                                <option value="@category.CategoryCode">@category.CategoryName (@category.CategoryCode)</option>
+                            }
+                        </select>
+                        <span asp-validation-for="CategoryCode" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ShortDescription">Kısa Açıklama</label>
+                        <textarea class="form-control" 
+                                  id="ShortDescription" 
+                                  name="ShortDescription" 
+                                  asp-for="ShortDescription"
+                                  rows="3" 
+                                  placeholder="Ürün hakkında kısa açıklama"></textarea>
+                    </div>
+                </div>
+
+                <!-- Fiyat ve Stok -->
+                <div>
+                    <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">💰 Fiyat ve Stok</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Price">Satış Fiyatı (TL) *</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="Price" 
+                               name="Price" 
+                               asp-for="Price"
+                               step="0.01" 
+                               min="0"
+                               placeholder="299.99" 
+                               required />
+                        <span asp-validation-for="Price" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="BuyingPrice">Alış Fiyatı (TL)</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="BuyingPrice" 
+                               name="BuyingPrice" 
+                               asp-for="BuyingPrice"
+                               step="0.01" 
+                               min="0"
+                               placeholder="200.00" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="Stock">Stok Miktarı *</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="Stock" 
+                               name="Stock" 
+                               asp-for="Stock"
+                               min="0"
+                               placeholder="100" 
+                               required />
+                        <span asp-validation-for="Stock" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="Brand">Marka</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="Brand" 
+                               name="Brand" 
+                               asp-for="Brand"
+                               placeholder="Marka adı" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="Vat">KDV Oranı (%)</label>
+                        <select class="form-select" 
+                                id="Vat" 
+                                name="Vat" 
+                                asp-for="Vat">
+                            <option value="">KDV Seçin</option>
+                            <option value="0">%0</option>
+                            <option value="1">%1</option>
+                            <option value="8">%8</option>
+                            <option value="18" selected>%18</option>
+                            <option value="20">%20</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="Currency">Para Birimi</label>
+                        <select class="form-select" 
+                                id="Currency" 
+                                name="Currency" 
+                                asp-for="Currency">
+                            <option value="TL" selected>TL</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div style="margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end;">
+                <a href="/Products" class="btn btn-secondary">
+                    ❌ İptal
+                </a>
+                <button type="submit" class="btn btn-success">
+                    ✅ Ürünü Kaydet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

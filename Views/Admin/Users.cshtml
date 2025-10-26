@@ -1,0 +1,159 @@
+﻿@model List<UserInfo>
+@{
+    ViewData["Title"] = "Kullanıcı Yönetimi";
+    var currentUserId = ViewBag.CurrentUserId ?? 0;
+}
+
+<div class="stats-bar">
+    <div class="stats-container" style="justify-content: center;">
+        <div class="stat-mini">
+            <div class="stat-icon purple">👥</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Kullanıcı</div>
+                <div class="stat-value-mini">@ViewBag.TotalUsers</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon red">👑</div>
+            <div class="stat-content">
+                <div class="stat-label">Admin</div>
+                <div class="stat-value-mini">@ViewBag.AdminCount</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon warning">👨‍💼</div>
+            <div class="stat-content">
+                <div class="stat-label">Manager</div>
+                <div class="stat-value-mini">@ViewBag.ManagerCount</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon blue">👁️</div>
+            <div class="stat-content">
+                <div class="stat-label">Viewer</div>
+                <div class="stat-value-mini">@ViewBag.ViewerCount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-container">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="margin-bottom: 24px;">
+            ✅ @TempData["Success"]
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="margin-bottom: 24px;">
+            ❌ @TempData["Error"]
+        </div>
+    }
+
+    <div class="section-header">
+        <h1 class="section-title">👥 Kullanıcı Yönetimi</h1>
+        <div class="section-actions">
+            <a href="/Admin" class="btn btn-secondary">← Geri Dön</a>
+            <a href="/Admin/Users/Create" class="btn btn-primary">➕ Yeni Kullanıcı</a>
+        </div>
+    </div>
+
+    <!-- Kullanıcı Kartları -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
+        @foreach (var user in Model)
+        {
+            var roleColor = user.Role switch
+            {
+                "Admin" => "danger",
+                "Manager" => "warning",
+                "Viewer" => "info",
+                _ => "secondary"
+            };
+
+            var roleIcon = user.Role switch
+            {
+                "Admin" => "👑",
+                "Manager" => "👨‍💼",
+                "Viewer" => "👁️",
+                _ => "👤"
+            };
+
+            var isCurrentUser = user.Id == currentUserId;
+
+            <div class="cards-container" style="position: relative;">
+                @if (isCurrentUser)
+                {
+                    <div style="position: absolute; top: 16px; right: 16px;">
+                        <span class="badge badge-primary" style="font-size: 11px;">Siz</span>
+                    </div>
+                }
+
+                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                    <div style="width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; color: white; font-weight: 700; box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);">
+                        @user.Username.Substring(0, 1).ToUpper()
+                    </div>
+
+                    <div style="flex: 1;">
+                        <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">
+                            @user.FullName
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">
+                            @@@user.Username
+                        </div>
+                        <span class="badge badge-@roleColor">
+                            @roleIcon @user.Role
+                        </span>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span style="color: var(--text-secondary);">📧 E-posta</span>
+                        <span style="color: var(--text-primary); font-weight: 600;">@user.Email</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span style="color: var(--text-secondary);">🔑 API Key</span>
+                        <span style="color: var(--primary); font-family: monospace; font-size: 11px;">
+                            @(user.ApiKey?.Substring(0, 16) ?? "N/A")...
+                        </span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span style="color: var(--text-secondary);">🆔 User ID</span>
+                        <span style="color: var(--text-primary); font-weight: 600;">@user.Id</span>
+                    </div>
+                </div>
+
+                @if (!isCurrentUser)
+                {
+                    <div style="display: flex; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                        <form method="post" asp-action="ToggleStatus" asp-route-userId="@user.Id" style="flex: 1;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-secondary" style="width: 100%; justify-content: center;"
+                                    onclick="return confirm('Kullanıcı durumunu değiştirmek istediğinizden emin misiniz?')">
+                                🔄 Durum Değiştir
+                            </button>
+                        </form>
+
+                        <form method="post" asp-action="Delete" asp-route-userId="@user.Id" style="flex: 1;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-danger" style="width: 100%; justify-content: center;"
+                                    onclick="return confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!')">
+                                🗑️ Sil
+                            </button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <div style="margin-top: 16px; padding: 12px; background: rgba(124, 58, 237, 0.1); border-radius: 8px; text-align: center; font-size: 12px; color: var(--primary);">
+                        ℹ️ Kendi hesabınızı düzenleyemez veya silemezsiniz
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

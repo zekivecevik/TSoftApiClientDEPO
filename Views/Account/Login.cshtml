@@ -1,0 +1,228 @@
+﻿@model LoginRequest
+@{
+    ViewData["Title"] = "Giriş Yap";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - T-Soft ERP</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+        }
+
+        .login-container {
+            background: var(--bg-card);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 24px;
+            padding: 48px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.4);
+        }
+
+        .login-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .demo-users {
+            background: rgba(124, 58, 237, 0.1);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 32px;
+        }
+
+            .demo-users h4 {
+                font-size: 14px;
+                color: var(--primary);
+                margin: 0 0 16px 0;
+                font-weight: 700;
+            }
+
+        .demo-user {
+            background: var(--bg-main);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .demo-user-info {
+            flex: 1;
+        }
+
+        .demo-user-username {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .demo-user-role {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .demo-user-btn {
+            padding: 6px 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+            .demo-user-btn:hover {
+                background: var(--primary-hover);
+                transform: scale(1.05);
+            }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="login-icon">🔐</div>
+            <h1 class="login-title">T-Soft ERP</h1>
+            <p class="login-subtitle">E-Ticaret Yönetim Sistemi</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(ViewBag.Error))
+        {
+            <div class="alert alert-danger" style="margin-bottom: 24px;">
+                ❌ @ViewBag.Error
+            </div>
+        }
+
+        @if (TempData["Info"] != null)
+        {
+            <div class="alert alert-info" style="margin-bottom: 24px;">
+                ℹ️ @TempData["Info"]
+            </div>
+        }
+
+        <form method="post" asp-action="Login" asp-controller="Account">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+
+            <div class="form-group">
+                <label class="form-label" for="Username">
+                    👤 Kullanıcı Adı
+                </label>
+                <input type="text"
+                       class="form-control"
+                       id="Username"
+                       name="Username"
+                       placeholder="Kullanıcı adınızı girin"
+                       required
+                       autofocus />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="Password">
+                    🔒 Şifre
+                </label>
+                <input type="password"
+                       class="form-control"
+                       id="Password"
+                       name="Password"
+                       placeholder="Şifrenizi girin"
+                       required />
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
+                🚀 Giriş Yap
+            </button>
+        </form>
+
+        <!-- Demo Kullanıcılar -->
+        <div class="demo-users">
+            <h4>📋 Demo Kullanıcılar</h4>
+
+            <div class="demo-user">
+                <div class="demo-user-info">
+                    <div class="demo-user-username">admin / admin123</div>
+                    <div class="demo-user-role">👑 Yönetici - Tam Yetki</div>
+                </div>
+                <button type="button" class="demo-user-btn" onclick="fillLogin('admin', 'admin123')">
+                    Doldur
+                </button>
+            </div>
+
+            <div class="demo-user">
+                <div class="demo-user-info">
+                    <div class="demo-user-username">manager / manager123</div>
+                    <div class="demo-user-role">👨‍💼 Mağaza Yöneticisi</div>
+                </div>
+                <button type="button" class="demo-user-btn" onclick="fillLogin('manager', 'manager123')">
+                    Doldur
+                </button>
+            </div>
+
+            <div class="demo-user" style="margin-bottom: 0;">
+                <div class="demo-user-info">
+                    <div class="demo-user-username">viewer / viewer123</div>
+                    <div class="demo-user-role">👁️ Görüntüleyici - Sadece Okuma</div>
+                </div>
+                <button type="button" class="demo-user-btn" onclick="fillLogin('viewer', 'viewer123')">
+                    Doldur
+                </button>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 24px; font-size: 12px; color: var(--text-secondary);">
+            © 2025 T-Soft ERP - Tüm hakları saklıdır
+        </div>
+    </div>
+
+    <script>
+        function fillLogin(username, password) {
+            document.getElementById('Username').value = username;
+            document.getElementById('Password').value = password;
+        }
+    </script>
+</body>
+</html>

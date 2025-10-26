@@ -1,0 +1,31 @@
+@{
+    ViewData["Title"] = "Order Debug";
+}
+
+<div class="main-container">
+    <div class="section-header">
+        <h1 class="section-title">🔍 Order Debug - İlk Sipariş JSON</h1>
+    </div>
+
+    <div style="margin-bottom: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border);">
+        <h3 style="color: var(--primary); margin-bottom: 12px;">Order ID: @ViewBag.OrderId</h3>
+        <p style="color: var(--text-secondary);">Aşağıdaki JSON'da şunları ara:</p>
+        <ul style="color: var(--text-secondary); margin: 8px 0 0 20px;">
+            <li><strong>Ürün Sayısı:</strong> ItemCount, ProductCount, OrderItemCount</li>
+            <li><strong>Şehir:</strong> City, ShippingCity, DeliveryCity, InvoiceCity</li>
+            <li><strong>Paketleme:</strong> SupplyStatus, PackingStatus, PreparationStatus</li>
+        </ul>
+    </div>
+
+    <div style="background: #1e1e1e; border-radius: 8px; padding: 20px; overflow-x: auto;">
+        <pre style="margin: 0; color: #d4d4d4; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;">@ViewBag.OrderJson</pre>
+    </div>
+
+    <div style="margin-top: 24px; padding: 16px; background: var(--warning-bg); border-left: 4px solid var(--warning); border-radius: 4px;">
+        <h4 style="margin: 0 0 8px 0; color: var(--warning);">💡 Bu JSON'u Kopyala ve Bana Gönder!</h4>
+        <p style="margin: 0; color: var(--text-secondary);">
+            Tüm JSON'u seçip CTRL+C ile kopyala, bana yapıştır. 
+            O zaman hangi field'ların kullanılacağını bulup düzelteceğiz!
+        </p>
+    </div>
+</div>

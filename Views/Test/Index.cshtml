@@ -1,0 +1,97 @@
+@{
+    ViewData["Title"] = "API Test";
+}
+
+<div class="main-container">
+    <div class="section-header">
+        <h1 class="section-title">🧪 T-Soft API V3 Test</h1>
+        <button class="btn btn-primary" onclick="location.reload()">
+            🔄 Yeniden Test Et
+        </button>
+    </div>
+
+    <!-- Test Logs -->
+    <div class="cards-container">
+        <h3 style="margin-bottom: 16px; font-size: 18px;">📋 Test Sonuçları</h3>
+        
+        <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;">
+            @foreach (var log in (List<string>)ViewBag.Logs)
+            {
+                if (log.StartsWith("✅") || log.StartsWith("🔍") || log.StartsWith("📦") || log.StartsWith("📁"))
+                {
+                    <div style="color: var(--success);">@log</div>
+                }
+                else if (log.StartsWith("❌") || log.StartsWith("💥"))
+                {
+                    <div style="color: var(--danger); font-weight: bold;">@log</div>
+                }
+                else if (log.Contains("━"))
+                {
+                    <div style="color: var(--text-secondary);">@log</div>
+                }
+                else
+                {
+                    <div style="color: var(--text-primary);">@log</div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Detaylı Debug Bilgisi -->
+    <div class="cards-container" style="margin-top: 24px;">
+        <h3 style="margin-bottom: 16px; font-size: 18px;">🔍 Detaylı Bilgi</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
+            <!-- Products JSON -->
+            <div>
+                <h4 style="color: var(--primary); margin-bottom: 12px;">📦 Products Response</h4>
+                <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 400px; overflow-y: auto;">
+                    <pre style="margin: 0; color: var(--text-secondary); font-size: 12px; white-space: pre-wrap; word-wrap: break-word;">@System.Text.Json.JsonSerializer.Serialize(ViewBag.ProductsResult, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })</pre>
+                </div>
+            </div>
+
+            <!-- Categories JSON -->
+            <div>
+                <h4 style="color: var(--success); margin-bottom: 12px;">📁 Categories Response</h4>
+                <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 400px; overflow-y: auto;">
+                    <pre style="margin: 0; color: var(--text-secondary); font-size: 12px; white-space: pre-wrap; word-wrap: break-word;">@System.Text.Json.JsonSerializer.Serialize(ViewBag.CategoriesResult, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })</pre>
+                </div>
+            </div>
+
+            <!-- Orders JSON -->
+            <div>
+                <h4 style="color: var(--warning); margin-bottom: 12px;">🛒 Orders Response</h4>
+                <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 400px; overflow-y: auto;">
+                    <pre style="margin: 0; color: var(--text-secondary); font-size: 12px; white-space: pre-wrap; word-wrap: break-word;">@System.Text.Json.JsonSerializer.Serialize(ViewBag.OrdersResult, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yardım -->
+    <div class="cards-container" style="margin-top: 24px;">
+        <h3 style="margin-bottom: 16px; font-size: 18px;">💡 Ne Yapmalıyım?</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="alert alert-info">
+                <strong>✅ Eğer "Success: True" görüyorsan:</strong><br>
+                API çalışıyor! Ürünler sayfasına git: <a href="/Products" style="color: var(--primary); text-decoration: underline;">Ürünler</a>
+            </div>
+
+            <div class="alert alert-danger">
+                <strong>❌ Eğer hata görüyorsan:</strong><br>
+                1. Token'ının doğru olduğundan emin ol (appsettings.json)<br>
+                2. V3 API endpoint'lerinin doğru olduğunu kontrol et<br>
+                3. Visual Studio Output penceresinde detaylı logları incele (View → Output)
+            </div>
+
+            <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                <strong style="color: var(--warning);">🔍 Debug İpuçları:</strong><br><br>
+                • <strong>401 Unauthorized:</strong> Token geçersiz veya eksik<br>
+                • <strong>404 Not Found:</strong> Endpoint yanlış<br>
+                • <strong>500 Server Error:</strong> API sunucu hatası<br>
+                • <strong>JSON Parse Error:</strong> Response formatı beklenenden farklı
+            </div>
+        </div>
+    </div>
+</div>
