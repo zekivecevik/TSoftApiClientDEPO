@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace TSoftApiClient.Models
 {
     /// <summary>
@@ -18,6 +20,7 @@ namespace TSoftApiClient.Models
     /// <summary>
     /// Ürün modeli - CRITICAL: TÜM ALANLAR STRING!
     /// T-Soft API numeric değerleri string olarak döndürüyor
+    /// ✅ VARYANT DESTEĞİ EKLENDİ
     /// </summary>
     public class Product
     {
@@ -107,6 +110,253 @@ namespace TSoftApiClient.Models
 
         // Other
         public string? StockCode { get; set; }
+
+        // ========== 🎨 VARYANT DESTEĞİ (YENİ) ==========
+
+        /// <summary>
+        /// Alt ürünler / Varyantlar (Renk-Beden kombinasyonları)
+        /// API'den "SubProducts" / "SubProductList" / "Products" alanlarından gelir
+        /// </summary>
+        [JsonPropertyName("subProducts")]
+        public List<ProductVariant>? SubProducts { get; set; }
+
+        [JsonPropertyName("subProductList")]
+        public List<ProductVariant>? SubProductList { get; set; }
+
+        [JsonPropertyName("products")]
+        public List<ProductVariant>? ProductVariants { get; set; }
+
+        /// <summary>
+        /// Varyantları birleştirilmiş liste olarak döner
+        /// </summary>
+        [JsonIgnore]
+        public List<ProductVariant> Variants
+        {
+            get
+            {
+                var variants = new List<ProductVariant>();
+                if (SubProducts?.Count > 0) variants.AddRange(SubProducts);
+                else if (SubProductList?.Count > 0) variants.AddRange(SubProductList);
+                else if (ProductVariants?.Count > 0) variants.AddRange(ProductVariants);
+                return variants;
+            }
+        }
+
+        /// <summary>
+        /// Bu ürünün varyantları var mı?
+        /// </summary>
+        [JsonIgnore]
+        public bool HasVariants => Variants.Count > 0;
+    }
+
+    /// <summary>
+    /// 🎨 Ürün Varyantı (Renk-Beden kombinasyonu)
+    /// </summary>
+    public class ProductVariant
+    {
+        // Basic Info
+        public string? ProductCode { get; set; }
+        public string? ProductId { get; set; }
+        public string? SubProductId { get; set; }
+        public string? VariantId { get; set; }
+        public string? VariantCode { get; set; }
+        public string? ProductName { get; set; }
+        public string? VariantName { get; set; }
+        public string? SubId { get; set; }
+        public string? Id { get; set; }
+
+        // ✅ Renk (JavaScript'teki TÜM olası alanlar)
+        [JsonPropertyName("color")]
+        public string? Color { get; set; }
+
+        [JsonPropertyName("colour")]
+        public string? Colour { get; set; }
+
+        [JsonPropertyName("colorCode")]
+        public string? ColorCode { get; set; }
+
+        [JsonPropertyName("colorName")]
+        public string? ColorName { get; set; }
+
+        [JsonPropertyName("renk")]
+        public string? Renk { get; set; }
+
+        [JsonPropertyName("Property1")]
+        public string? Property1 { get; set; }
+
+        [JsonPropertyName("PropertyValue1")]
+        public string? PropertyValue1 { get; set; }
+
+        [JsonPropertyName("Variant1")]
+        public string? Variant1 { get; set; }
+
+        [JsonPropertyName("Attribute1")]
+        public string? Attribute1 { get; set; }
+
+        [JsonPropertyName("Option1")]
+        public string? Option1 { get; set; }
+
+        [JsonPropertyName("Nitelik1")]
+        public string? Nitelik1 { get; set; }
+
+        // ✅ Beden (JavaScript'teki TÜM olası alanlar)
+        [JsonPropertyName("size")]
+        public string? Size { get; set; }
+
+        [JsonPropertyName("sizeCode")]
+        public string? SizeCode { get; set; }
+
+        [JsonPropertyName("sizeName")]
+        public string? SizeName { get; set; }
+
+        [JsonPropertyName("beden")]
+        public string? Beden { get; set; }
+
+        [JsonPropertyName("Property2")]
+        public string? Property2 { get; set; }
+
+        [JsonPropertyName("PropertyValue2")]
+        public string? PropertyValue2 { get; set; }
+
+        [JsonPropertyName("Variant2")]
+        public string? Variant2 { get; set; }
+
+        [JsonPropertyName("Attribute2")]
+        public string? Attribute2 { get; set; }
+
+        [JsonPropertyName("Option2")]
+        public string? Option2 { get; set; }
+
+        [JsonPropertyName("Nitelik2")]
+        public string? Nitelik2 { get; set; }
+
+        // Stok
+        [JsonPropertyName("stock")]
+        public string? Stock { get; set; }
+
+        [JsonPropertyName("stockQuantity")]
+        public string? StockQuantity { get; set; }
+
+        [JsonPropertyName("availableStock")]
+        public string? AvailableStock { get; set; }
+
+        // Fiyat
+        [JsonPropertyName("price")]
+        public string? Price { get; set; }
+
+        [JsonPropertyName("sellingPrice")]
+        public string? SellingPrice { get; set; }
+
+        [JsonPropertyName("buyingPrice")]
+        public string? BuyingPrice { get; set; }
+
+        // Durum
+        [JsonPropertyName("isActive")]
+        public string? IsActive { get; set; }
+
+        [JsonPropertyName("isAvailable")]
+        public string? IsAvailable { get; set; }
+
+        // Barkod
+        [JsonPropertyName("barcode")]
+        public string? Barcode { get; set; }
+
+        [JsonPropertyName("sku")]
+        public string? Sku { get; set; }
+
+        [JsonPropertyName("modelCode")]
+        public string? ModelCode { get; set; }
+
+        // Görsel
+        [JsonPropertyName("image")]
+        public string? Image { get; set; }
+
+        [JsonPropertyName("imageUrl")]
+        public string? ImageUrl { get; set; }
+
+        [JsonPropertyName("thumbnail")]
+        public string? Thumbnail { get; set; }
+
+        [JsonPropertyName("thumbnailUrl")]
+        public string? ThumbnailUrl { get; set; }
+
+        // ========== HELPER METODLAR ==========
+
+        /// <summary>
+        /// Renk değerini döner (JavaScript kodundaki gibi TÜM olası alanları kontrol eder)
+        /// </summary>
+        public string GetColor() =>
+            Color ?? Colour ?? ColorName ?? ColorCode ?? Renk ??
+            Property1 ?? PropertyValue1 ?? Variant1 ?? Attribute1 ?? Option1 ?? Nitelik1 ?? "";
+
+        /// <summary>
+        /// Beden değerini döner (JavaScript kodundaki gibi TÜM olası alanları kontrol eder)
+        /// </summary>
+        public string GetSize() =>
+            Size ?? SizeName ?? SizeCode ?? Beden ??
+            Property2 ?? PropertyValue2 ?? Variant2 ?? Attribute2 ?? Option2 ?? Nitelik2 ?? "";
+
+        /// <summary>
+        /// Stok miktarını integer olarak döner
+        /// </summary>
+        public int GetStockQuantity()
+        {
+            var stockStr = Stock ?? StockQuantity ?? AvailableStock ?? "0";
+            return int.TryParse(stockStr, out var qty) ? qty : 0;
+        }
+
+        /// <summary>
+        /// Fiyatı decimal olarak döner
+        /// </summary>
+        public decimal GetPrice()
+        {
+            var priceStr = SellingPrice ?? Price ?? "0";
+            return decimal.TryParse(priceStr,
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var price) ? price : 0;
+        }
+
+        /// <summary>
+        /// Varyant aktif mi?
+        /// </summary>
+        [JsonIgnore]
+        public bool IsActiveVariant
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(IsActive) && string.IsNullOrEmpty(IsAvailable))
+                    return true;
+
+                var activeValue = (IsActive ?? IsAvailable ?? "1").ToLower().Trim();
+                return activeValue == "1" ||
+                       activeValue == "true" ||
+                       activeValue == "yes" ||
+                       activeValue == "active";
+            }
+        }
+
+        /// <summary>
+        /// Varyant display adı (örn: "Kırmızı - 36")
+        /// </summary>
+        [JsonIgnore]
+        public string DisplayName
+        {
+            get
+            {
+                var color = GetColor();
+                var size = GetSize();
+
+                if (!string.IsNullOrEmpty(color) && !string.IsNullOrEmpty(size))
+                    return $"{color} - {size}";
+                if (!string.IsNullOrEmpty(color))
+                    return color;
+                if (!string.IsNullOrEmpty(size))
+                    return size;
+
+                return VariantName ?? ProductName ?? VariantCode ?? ProductCode ?? "Varyant";
+            }
+        }
     }
 
     /// <summary>
@@ -124,12 +374,12 @@ namespace TSoftApiClient.Models
         public string? IsPrimary { get; set; }
         public string? IsMain { get; set; }
         public string? IsActive { get; set; }
-        public string? Order { get; set; }  // STRING değil int olabilir ama güvenli olsun
+        public string? Order { get; set; }
         public string? OrderNo { get; set; }
     }
 
     /// <summary>
-    /// Kategori modeli - Geliştirilmiş versiyon
+    /// Kategori modeli
     /// </summary>
     public class Category
     {
@@ -137,19 +387,14 @@ namespace TSoftApiClient.Models
         public string? CategoryName { get; set; }
         public string? ParentCategoryCode { get; set; }
         public string? IsActive { get; set; }
-
-        // Kategori ağacı için
         public string? CategoryId { get; set; }
         public string? ParentCategoryId { get; set; }
-        public string? Level { get; set; }  // STRING
-        public string? Order { get; set; }  // STRING
+        public string? Level { get; set; }
+        public string? Order { get; set; }
         public List<Category>? Children { get; set; }
-        public string? Path { get; set; } // "Ana > Alt > Ürün" formatında
+        public string? Path { get; set; }
     }
 
-    /// <summary>
-    /// Müşteri modeli - TÜM ALANLAR STRING!
-    /// </summary>
     public class Customer
     {
         public string? CustomerId { get; set; }
@@ -158,15 +403,11 @@ namespace TSoftApiClient.Models
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string? IsActive { get; set; }
-
-        // Tarih alanları - STRING!
         public string? CreatedDate { get; set; }
         public string? DateCreated { get; set; }
         public string? UpdateDate { get; set; }
         public string? UpdateDateTimeStamp { get; set; }
         public string? LastModified { get; set; }
-
-        // Ek müşteri bilgileri
         public string? CustomerGroupId { get; set; }
         public string? CustomerGroup { get; set; }
         public string? City { get; set; }
@@ -174,12 +415,8 @@ namespace TSoftApiClient.Models
         public string? Address { get; set; }
     }
 
-    /// <summary>
-    /// Sipariş modeli - ALL STRINGS
-    /// </summary>
     public class Order
     {
-        // Basic Info - ALL STRINGS
         public string? Id { get; set; }
         public string? OrderId { get; set; }
         public string? OrderCode { get; set; }
@@ -187,8 +424,6 @@ namespace TSoftApiClient.Models
         public string? OrderStatus { get; set; }
         public string? OrderStatusId { get; set; }
         public string? SupplyStatus { get; set; }
-
-        // Customer Info - ALL STRINGS
         public string? CustomerId { get; set; }
         public string? CustomerCode { get; set; }
         public string? CustomerName { get; set; }
@@ -196,8 +431,6 @@ namespace TSoftApiClient.Models
         public string? CustomerEmail { get; set; }
         public string? CustomerPhone { get; set; }
         public string? CustomerGroupId { get; set; }
-
-        // Date - STRINGS
         public string? OrderDate { get; set; }
         public string? OrderDateTimeStamp { get; set; }
         public string? CreatedDate { get; set; }
@@ -205,14 +438,10 @@ namespace TSoftApiClient.Models
         public string? UpdateDate { get; set; }
         public string? UpdateDateTimeStamp { get; set; }
         public string? ApprovalTime { get; set; }
-
-        // Location
         public string? City { get; set; }
         public string? ShippingCity { get; set; }
         public string? ShippingAddress { get; set; }
         public string? BillingCity { get; set; }
-
-        // Financial - ALL STRINGS
         public string? Total { get; set; }
         public string? TotalAmount { get; set; }
         public string? OrderTotalPrice { get; set; }
@@ -224,8 +453,6 @@ namespace TSoftApiClient.Models
         public string? ShippingTotal { get; set; }
         public string? Currency { get; set; }
         public string? SiteDefaultCurrency { get; set; }
-
-        // Payment & Shipping - STRINGS
         public string? PaymentTypeId { get; set; }
         public string? PaymentType { get; set; }
         public string? PaymentTypeName { get; set; }
@@ -234,7 +461,6 @@ namespace TSoftApiClient.Models
         public string? PaymentBankName { get; set; }
         public string? Bank { get; set; }
         public string? PaymentInfo { get; set; }
-
         public string? CargoId { get; set; }
         public string? CargoCode { get; set; }
         public string? Cargo { get; set; }
@@ -245,8 +471,6 @@ namespace TSoftApiClient.Models
         public string? CargoPaymentMethod { get; set; }
         public string? CargoChargeWithVat { get; set; }
         public string? CargoChargeWithoutVat { get; set; }
-
-        // Additional fields
         public string? Application { get; set; }
         public string? Language { get; set; }
         public string? ExchangeRate { get; set; }
@@ -255,16 +479,11 @@ namespace TSoftApiClient.Models
         public string? NonMemberShopping { get; set; }
         public string? WaybillNumber { get; set; }
         public string? InvoiceNumber { get; set; }
-
-        // Items - ItemCount INT (çünkü biz kod tarafında hesaplıyoruz)
         public int ItemCount { get; set; }
         public List<OrderDetail>? OrderDetails { get; set; }
         public List<OrderDetail>? Items { get; set; }
     }
 
-    /// <summary>
-    /// Sipariş detay modeli
-    /// </summary>
     public class OrderDetail
     {
         public string? Id { get; set; }
@@ -275,16 +494,11 @@ namespace TSoftApiClient.Models
         public string? Quantity { get; set; }
         public string? Price { get; set; }
         public string? Total { get; set; }
-
-        // Additional fields
         public string? City { get; set; }
         public string? ShippingCity { get; set; }
         public string? SupplyStatus { get; set; }
     }
 
-    /// <summary>
-    /// Sipariş durum modeli
-    /// </summary>
     public class OrderStatusInfo
     {
         public string? Id { get; set; }
@@ -294,9 +508,6 @@ namespace TSoftApiClient.Models
         public string? Code { get; set; }
     }
 
-    /// <summary>
-    /// Ödeme tipi modeli
-    /// </summary>
     public class PaymentType
     {
         public string? Id { get; set; }
@@ -306,9 +517,6 @@ namespace TSoftApiClient.Models
         public string? Code { get; set; }
     }
 
-    /// <summary>
-    /// Kargo firması modeli
-    /// </summary>
     public class CargoCompany
     {
         public string? Id { get; set; }

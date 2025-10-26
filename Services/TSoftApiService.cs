@@ -206,6 +206,39 @@ namespace TSoftApiClient.Services
                 _logger.LogDebug(ex, "⚠️ Wrapped format parse failed: {Message}", ex.Message);
             }
 
+            // ✅ TRY ARRAY FORMAT: {"data": [{...}]} - Eğer data array ise ilk elemanı al
+            try
+            {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("data", out var dataElement) && dataElement.ValueKind == JsonValueKind.Array)
+                {
+                    var arrayLength = dataElement.GetArrayLength();
+                    if (arrayLength > 0)
+                    {
+                        var firstElement = dataElement[0];
+                        var item = JsonSerializer.Deserialize<T>(firstElement.GetRawText(), jsonOptions);
+                        if (item != null)
+                        {
+                            _logger.LogDebug("✅ Array format parsed successfully (took first element from {Count} items)", arrayLength);
+
+                            // success ve message alanlarını da al
+                            var success = doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean();
+
+                            return new TSoftApiResponse<T>
+                            {
+                                Success = success,
+                                Data = item,
+                                Message = null
+                            };
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "⚠️ Array format parse failed: {Message}", ex.Message);
+            }
+
             try
             {
                 var direct = JsonSerializer.Deserialize<T>(body, jsonOptions);
@@ -792,6 +825,211 @@ namespace TSoftApiClient.Services
                 Success = false,
                 Message = new() { new() { Text = new() { "All customer endpoints failed" } } }
             };
+        }
+
+        // ========== 🎨 VARYANT YÖNETİMİ ==========
+
+        /// <summary>
+        /// Tek bir ürünün tüm varyantlarını (renk-beden) çeker
+        /// </summary>
+        public async Task<TSoftApiResponse<Product>> GetProductWithVariantsAsync(
+            string productCode,
+            CancellationToken ct = default)
+        {
+            _logger.LogInformation("🎨 Fetching product with variants: {Code}", productCode);
+
+            // ✅ T2429 → 2429 dönüşümü (T-Soft bazen T olmadan bekliyor)
+            var numericCode = productCode?.TrimStart('T', 't');
+
+            var rest1Endpoints = new[]
+            {
+                "/product/get",
+                "/product/getProduct",
+                "/product/getProductDetail",
+                "/product/detail"
+            };
+
+            // ✅ HEM T2429 HEM 2429 deneyelim
+            var codesToTry = new List<string> { productCode };
+            if (!string.IsNullOrEmpty(numericCode) && numericCode != productCode)
+            {
+                codesToTry.Add(numericCode);
+            }
+
+            foreach (var codeToTry in codesToTry)
+            {
+                _logger.LogDebug("🔄 Trying with code: {Code}", codeToTry);
+
+                // ✅ Çalışan JavaScript kodundaki gibi TÜM bayrakları ekle
+                var form = new Dictionary<string, string>
+                {
+                    // Ürün ID/Code (hem orijinal hem numeric)
+                    ["ProductId"] = codeToTry,
+                    ["productId"] = codeToTry,
+                    ["ProductCode"] = productCode,  // Orijinal ProductCode
+                    ["productCode"] = productCode,
+                    ["code"] = codeToTry,
+                    ["Id"] = codeToTry,
+
+                    // Varyant bayrakları (TÜM VARYASYONLARı)
+                    ["FetchDetails"] = "1",
+                    ["FetchSubProducts"] = "1",
+                    ["WithSubProducts"] = "1",
+                    ["WithVariants"] = "1",
+                    ["IncludeSubProducts"] = "1",
+                    ["includeVariants"] = "1",
+                    ["includeSubProducts"] = "1",
+                    ["withVariants"] = "true",
+                    ["fetchDetails"] = "true",
+
+                    // Columns (JavaScript'teki gibi)
+                    ["columns"] = "ProductId,ProductName,Name,ProductCode,Barcode,Stock,ModelCode",
+                    ["start"] = "0",
+                    ["length"] = "1"
+                };
+
+                foreach (var endpoint in rest1Endpoints)
+                {
+                    var (success, body, _) = await Rest1PostAsync(endpoint, form, ct);
+                    if (success)
+                    {
+                        _logger.LogDebug("✅ REST1 endpoint with code {Code} succeeded: {Endpoint}", codeToTry, endpoint);
+                        var result = ParseResponse<Product>(body);
+
+                        if (result.Success && result.Data != null)
+                        {
+                            _logger.LogInformation("📦 Product has {Count} variants", result.Data.Variants.Count);
+                            return result;
+                        }
+                    }
+                    _logger.LogDebug("⚠️ REST1 endpoint with code {Code} failed or empty: {Endpoint}", codeToTry, endpoint);
+                }
+            }
+
+            var v3Endpoints = new[]
+            {
+                $"/catalog/products/{productCode}",
+                $"/api/v3/catalog/products/{productCode}",
+                $"/products/{productCode}"
+            };
+
+            var queryParams = new Dictionary<string, string>
+            {
+                ["includeVariants"] = "1",
+                ["includeSubProducts"] = "1",
+                ["expand"] = "variants,subProducts",
+                ["FetchSubProducts"] = "1",
+                ["WithVariants"] = "1"
+            };
+
+            foreach (var endpoint in v3Endpoints)
+            {
+                var (success, body, _) = await V3GetAsync(endpoint, queryParams, ct);
+                if (success)
+                {
+                    _logger.LogDebug("✅ V3 endpoint with variants succeeded: {Endpoint}", endpoint);
+                    var result = ParseResponse<Product>(body);
+
+                    if (result.Success && result.Data != null)
+                    {
+                        _logger.LogInformation("📦 Product has {Count} variants", result.Data.Variants.Count);
+                        return result;
+                    }
+                }
+            }
+
+            _logger.LogWarning("⚠️ All endpoints failed for product: {Code}", productCode);
+            return new TSoftApiResponse<Product>
+            {
+                Success = false,
+                Message = new() { new() { Text = new() { $"Product not found: {productCode}" } } }
+            };
+        }
+
+        /// <summary>
+        /// Varyant bazlı stok güncelleme
+        /// </summary>
+        public async Task<TSoftApiResponse<object>> UpdateVariantStockAsync(
+            string productCode,
+            string variantCode,
+            int newStock,
+            CancellationToken ct = default)
+        {
+            _logger.LogInformation("📊 Updating variant stock: {Product}/{Variant} = {Stock}",
+                productCode, variantCode, newStock);
+
+            var form = new Dictionary<string, string>
+            {
+                ["productCode"] = productCode,
+                ["variantCode"] = variantCode,
+                ["stock"] = newStock.ToString(),
+                ["stockQuantity"] = newStock.ToString()
+            };
+
+            var rest1Endpoints = new[]
+            {
+                "/product/updateVariantStock",
+                "/product/updateStock",
+                "/stock/update"
+            };
+
+            foreach (var endpoint in rest1Endpoints)
+            {
+                var (success, body, _) = await Rest1PostAsync(endpoint, form, ct);
+                if (success)
+                {
+                    _logger.LogInformation("✅ Variant stock updated successfully");
+                    return new TSoftApiResponse<object> { Success = true };
+                }
+            }
+
+            return new TSoftApiResponse<object>
+            {
+                Success = false,
+                Message = new() { new() { Text = new() { "Failed to update variant stock" } } }
+            };
+        }
+
+        /// <summary>
+        /// Renklere göre gruplandırılmış varyantlar
+        /// </summary>
+        public Dictionary<string, List<ProductVariant>> GetVariantsByColor(Product product)
+        {
+            var grouped = new Dictionary<string, List<ProductVariant>>();
+
+            foreach (var variant in product.Variants)
+            {
+                var color = variant.GetColor();
+                if (string.IsNullOrEmpty(color)) color = "Varsayılan";
+
+                if (!grouped.ContainsKey(color))
+                    grouped[color] = new List<ProductVariant>();
+
+                grouped[color].Add(variant);
+            }
+
+            return grouped;
+        }
+
+        /// <summary>
+        /// Bedenlere göre gruplandırılmış varyantlar
+        /// </summary>
+        public Dictionary<string, List<ProductVariant>> GetVariantsBySize(Product product)
+        {
+            var grouped = new Dictionary<string, List<ProductVariant>>();
+
+            foreach (var variant in product.Variants)
+            {
+                var size = variant.GetSize();
+                if (string.IsNullOrEmpty(size)) size = "Tek Beden";
+
+                if (!grouped.ContainsKey(size))
+                    grouped[size] = new List<ProductVariant>();
+
+                grouped[size].Add(variant);
+            }
+
+            return grouped;
         }
     }
 }

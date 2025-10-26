@@ -1,0 +1,188 @@
+@model TSoftApiClient.Models.Product
+@{
+    ViewData["Title"] = Model.ProductName ?? "Ürün Detayı";
+    var hasVariants = Model?.Variants?.Count > 0;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+    <link rel="stylesheet" href="~/css/detail.css">
+</head>
+<body>
+    <div class="page-container">
+        <div class="page-header">
+            <div class="page-title">
+                <div class="icon">📦</div>
+                <h1>@(Model?.ProductName ?? "Ürün Detayı")</h1>
+            </div>
+            <a href="/Products" class="btn btn-secondary">← Ürünlere Dön</a>
+        </div>
+
+        @if (!string.IsNullOrEmpty(ViewBag.Error))
+        {
+            <div class="alert alert-danger">
+                <span class="alert-icon">⚠️</span>
+                <strong>Hata:</strong> @ViewBag.Error
+            </div>
+        }
+
+        @if (Model != null)
+        {
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <span>🏷️</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Ürün Kodu</div>
+                        <div class="stat-value">@(Model.ProductCode ?? "-")</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <span>🎨</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Toplam Varyant</div>
+                        <div class="stat-value">@Model.Variants.Count Adet</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <span>📊</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Toplam Stok</div>
+                        <div class="stat-value">@(string.IsNullOrEmpty(Model.Stock) ? "0" : Model.Stock) Adet</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">🎨</span>
+                        Renk ve Beden Seçenekleri
+                    </div>
+                </div>
+
+                @if (hasVariants)
+                {
+                    <table id="variantsTable" class="display" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Renk</th>
+                                <th>Beden</th>
+                                <th>Stok</th>
+                                <th>Fiyat</th>
+                                <th>Barkod</th>
+                                <th>Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var variant in Model.Variants)
+                            {
+                                var stock = variant.GetStockQuantity();
+                                var stockBadge = stock == 0 ? "badge-danger" : stock < 5 ? "badge-warning" : "badge-success";
+                                var stockText = stock == 0 ? "Stokta Yok" : stock < 5 ? $"{stock} Adet (Az)" : $"{stock} Adet";
+                                var statusBadge = variant.IsActiveVariant ? "badge-success" : "badge-danger";
+                                var statusText = variant.IsActiveVariant ? "✓ Aktif" : "✗ Pasif";
+
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-primary">@variant.GetColor()</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">@variant.GetSize()</span>
+                                    </td>
+                                    <td data-order="@stock">
+                                        <span class="badge @stockBadge">@stockText</span>
+                                    </td>
+                                    <td data-order="@variant.GetPrice()">
+                                        <span class="price-text">@variant.GetPrice().ToString("N2") ₺</span>
+                                    </td>
+                                    <td>
+                                        <span class="barcode-text">@(variant.Barcode ?? "-")</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @statusBadge">@statusText</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📦</div>
+                        <h3>Bu ürünün varyantı bulunmuyor</h3>
+                        <p>Renk veya beden seçeneği yok</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (hasVariants)
+    {
+        <script>
+            $(document).ready(function() {
+                $('#variantsTable').DataTable({
+                    language: {
+                        search: "Ara:",
+                        lengthMenu: "Göster _MENU_ kayıt",
+                        info: "_TOTAL_ kayıttan _START_ - _END_ arası gösteriliyor",
+                        infoEmpty: "Kayıt yok",
+                        infoFiltered: "(_MAX_ kayıt içinden filtrelendi)",
+                        zeroRecords: "Eşleşen kayıt bulunamadı",
+                        paginate: {
+                            first: "İlk",
+                            last: "Son",
+                            next: "Sonraki",
+                            previous: "Önceki"
+                        }
+                    },
+                    pageLength: 25,
+                    order: [[2, 'desc']],
+                    dom: 'Bfrtip',
+                    buttons: [
+                        {
+                            extend: 'excel',
+                            text: '📊 Excel',
+                            title: '@Model.ProductName - Varyantlar',
+                            exportOptions: {
+                                columns: ':visible'
+                            }
+                        },
+                        {
+                            extend: 'print',
+                            text: '🖨️ Yazdır',
+                            title: '@Model.ProductName - Varyantlar'
+                        }
+                    ],
+                    responsive: true
+                });
+            });
+        </script>
+    }
+</body>
+</html>

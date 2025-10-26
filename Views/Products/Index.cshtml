@@ -33,19 +33,6 @@
         }
         return $"₺{price}";
     }
-
-    string GetImageUrl(Product product)
-    {
-        if (!string.IsNullOrEmpty(product.ThumbnailUrl)) return product.ThumbnailUrl;
-        if (!string.IsNullOrEmpty(product.ImageUrl)) return product.ImageUrl;
-        if (!string.IsNullOrEmpty(product.Image)) return product.Image;
-        if (product.Images != null && product.Images.Count > 0)
-        {
-            var img = product.Images[0];
-            return img.ThumbnailUrl ?? img.Thumbnail ?? img.ImageUrl ?? img.Image ?? "";
-        }
-        return "";
-    }
 }
 
 <!-- Stats Bar -->
@@ -129,9 +116,6 @@
     <div class="section-header">
         <h1 class="section-title">📦 Ürünler</h1>
         <div class="section-actions">
-            <a href="/ProductStatusDebug" class="btn btn-secondary" title="IsActive field debug">
-                🔍 Status Debug
-            </a>
             <button class="btn btn-secondary" onclick="exportToExcel()">
                 📥 Excel'e Aktar
             </button>
@@ -220,12 +204,11 @@
 
     @if (Model.Count > 0)
     {
-        <!-- ✅ DATA TABLE (Siparişler gibi box içinde) -->
+        <!-- ✅ BASIT TABLO (GÖRSELSIZ) -->
         <div class="table-container">
             <table class="table" id="productsTable">
                 <thead>
                     <tr>
-                        <th style="width: 80px; text-align: center;">Görsel</th>
                         <th style="text-align: center;">Ürün Kodu</th>
                         <th style="text-align: left;">Ürün Adı</th>
                         <th style="text-align: center;">Kategori</th>
@@ -253,29 +236,6 @@
                             data-price="@(decimal.TryParse(product.SellingPrice ?? product.Price, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : 0)"
                             data-stock="@stock">
 
-                            <!-- Görsel -->
-                            <td style="text-align: center; padding: 8px; border-right: 1px solid var(--border);">
-                                @{
-                                    var imageUrl = GetImageUrl(product);
-                                }
-                                @if (!string.IsNullOrEmpty(imageUrl))
-                                {
-                                    <img src="@imageUrl"
-                                         alt="@product.ProductName"
-                                         style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);"
-                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div style="display: none; width: 60px; height: 60px; background: var(--bg-main); border-radius: 8px; align-items: center; justify-content: center; font-size: 24px;">
-                                        📦
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div style="width: 60px; height: 60px; background: var(--bg-main); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
-                                        📦
-                                    </div>
-                                }
-                            </td>
-
                             <!-- Ürün Kodu -->
                             <td style="text-align: center; border-right: 1px solid var(--border);">
                                 <span class="badge badge-info" style="font-size: 13px; padding: 6px 12px;">
@@ -285,14 +245,18 @@
 
                             <!-- Ürün Adı -->
                             <td style="border-right: 1px solid var(--border);">
-                                <strong style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
-                                    @product.ProductName
-                                </strong>
+                                <a href="/Products/Detail/@product.ProductCode"
+                                   style="text-decoration: none; color: var(--text-primary); display: block;"
+                                   class="product-name-link">
+                                    <strong style="font-size: 14px; font-weight: 600;">
+                                        @product.ProductName
+                                    </strong>
+                                </a>
                                 @if (!string.IsNullOrEmpty(product.ShortDescription))
                                 {
                                     <br />
                                     <small style="color: var(--text-secondary); font-size: 12px;">
-                                        @(product.ShortDescription.Length > 50 ? product.ShortDescription.Substring(0, 50) + "..." : product.ShortDescription)
+                                        @(product.ShortDescription.Length > 80 ? product.ShortDescription.Substring(0, 80) + "..." : product.ShortDescription)
                                     </small>
                                 }
                             </td>
@@ -551,15 +515,15 @@
 
             visibleRows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                const code = cells[1].textContent.trim();
-                const name = cells[2].querySelector('strong').textContent.trim();
-                const category = cells[3].textContent.trim();
-                const brand = cells[4].textContent.trim();
-                const stock = cells[5].textContent.trim();
-                const status = cells[6].textContent.trim();
-                const buyingPrice = cells[7].textContent.trim();
-                const sellingPrice = cells[8].querySelector('strong').textContent.trim();
-                const update = cells[9].textContent.trim().replace(/\n/g, ' ');
+                const code = cells[0].textContent.trim();
+                const name = cells[1].querySelector('strong').textContent.trim();
+                const category = cells[2].textContent.trim();
+                const brand = cells[3].textContent.trim();
+                const stock = cells[4].textContent.trim();
+                const status = cells[5].textContent.trim();
+                const buyingPrice = cells[6].textContent.trim();
+                const sellingPrice = cells[7].querySelector('strong').textContent.trim();
+                const update = cells[8].textContent.trim().replace(/\n/g, ' ');
 
                 csv += `"${code}","${name}","${category}","${brand}","${stock}","${status}","${buyingPrice}","${sellingPrice}","${update}"\n`;
             });
@@ -581,5 +545,25 @@
         .product-row:hover {
             background: var(--bg-hover);
             transform: translateX(4px);
+        }
+
+    /* Ürün Adı Link Stili */
+    .product-name-link {
+        transition: all 0.2s ease;
+        padding: 4px 0;
+        border-radius: 4px;
+    }
+
+        .product-name-link:hover {
+            color: var(--primary) !important;
+            text-decoration: underline !important;
+        }
+
+        .product-name-link strong {
+            transition: color 0.2s ease;
+        }
+
+        .product-name-link:hover strong {
+            color: var(--primary) !important;
         }
 </style>
