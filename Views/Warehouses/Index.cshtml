@@ -1,4 +1,5 @@
-﻿@model List<Warehouse>
+﻿<!-- Views/Warehouses/Index.cshtml - TAMAMI -->
+@model List<Warehouse>
 @{
     ViewData["Title"] = "Depo Yönetimi";
 }
@@ -19,6 +20,20 @@
                 <div class="stat-value-mini">@Model.Count(w => w.IsActive)</div>
             </div>
         </div>
+        <div class="stat-mini">
+            <div class="stat-icon blue">📦</div>
+            <div class="stat-content">
+                <div class="stat-label">Toplam Stok</div>
+                <div class="stat-value-mini">@ViewBag.TotalStock</div>
+            </div>
+        </div>
+        <div class="stat-mini">
+            <div class="stat-icon red">📊</div>
+            <div class="stat-content">
+                <div class="stat-label">Ürün Çeşidi</div>
+                <div class="stat-value-mini">@ViewBag.UniqueProducts</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -36,6 +51,12 @@
     <div class="section-header">
         <h1 class="section-title">🏭 Depo Yönetimi</h1>
         <div class="section-actions">
+            <form method="post" action="/Warehouses/SyncProducts" style="display: inline;">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success" onclick="return confirm('T-Soft\'tan tüm ürünleri Ana Depoya aktarmak istiyor musunuz?')">
+                    🔄 Ürünleri Senkronize Et
+                </button>
+            </form>
             <a href="/Warehouses/BarcodeScanner" class="btn btn-success">📷 Barkod Tarayıcı</a>
             <a href="/Warehouses/Counting" class="btn btn-primary">📦 Sayım Yap</a>
             <a href="/Warehouses/Transfer" class="btn btn-info">🔄 Transfer</a>

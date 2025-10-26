@@ -1,3 +1,4 @@
+// Services/WarehouseService.cs - TAMAMI (HATA DÜZELTİLMİŞ)
 using TSoftApiClient.Models;
 
 namespace TSoftApiClient.Services
@@ -95,6 +96,10 @@ namespace TSoftApiClient.Services
 
         public List<WarehouseStock> GetWarehouseStocks(int warehouseId)
         {
+            if (warehouseId == 0)
+            {
+                return _stocks.ToList();
+            }
             return _stocks.Where(s => s.WarehouseId == warehouseId).ToList();
         }
 
@@ -195,6 +200,105 @@ namespace TSoftApiClient.Services
                     Quantity = s.Quantity
                 })
                 .ToList();
+        }
+
+        public (bool Success, string Message) AddProductToDefaultWarehouse(string barcode, int quantity)
+        {
+            var defaultWarehouse = _warehouses.FirstOrDefault(w => w.Code == "DEPO-01" && w.IsActive);
+
+            if (defaultWarehouse == null)
+            {
+                return (false, "Varsayılan depo bulunamadı");
+            }
+
+            var result = AddStockByBarcode(defaultWarehouse.Id, barcode, quantity);
+            return (result.Success, result.Message);
+        }
+
+        public (int Success, int Failed, List<string> Errors) SyncProductsToDefaultWarehouse(List<Product> products)
+        {
+            int successCount = 0;
+            int failedCount = 0;
+            var errors = new List<string>();
+
+            var defaultWarehouse = _warehouses.FirstOrDefault(w => w.Code == "DEPO-01" && w.IsActive);
+            if (defaultWarehouse == null)
+            {
+                errors.Add("Varsayılan depo (DEPO-01) bulunamadı");
+                return (0, products.Count, errors);
+            }
+
+            foreach (var product in products)
+            {
+                try
+                {
+                    var barcode = !string.IsNullOrEmpty(product.Barcode)
+                        ? product.Barcode
+                        : product.ProductCode ?? "";
+
+                    if (string.IsNullOrEmpty(barcode))
+                    {
+                        failedCount++;
+                        errors.Add($"Ürün {product.ProductName}: Barkod/Kod yok");
+                        continue;
+                    }
+
+                    var stock = int.TryParse(product.Stock, out var stockVal) ? stockVal : 0;
+
+                    if (stock <= 0)
+                    {
+                        continue;
+                    }
+
+                    var existingStock = _stocks.FirstOrDefault(s =>
+                        s.WarehouseId == defaultWarehouse.Id &&
+                        s.Barcode == barcode);
+
+                    if (existingStock != null)
+                    {
+                        existingStock.Quantity = stock;
+                        existingStock.LastUpdated = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        _stocks.Add(new WarehouseStock
+                        {
+                            Id = _nextStockId++,
+                            WarehouseId = defaultWarehouse.Id,
+                            Barcode = barcode,
+                            Quantity = stock,
+                            CreatedAt = DateTime.UtcNow,
+                            LastUpdated = DateTime.UtcNow
+                        });
+                    }
+
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    failedCount++;
+                    errors.Add($"Ürün {product.ProductName}: {ex.Message}");
+                }
+            }
+
+            _logger.LogInformation("✅ Depo senkronizasyonu: {Success} başarılı, {Failed} hata", successCount, failedCount);
+
+            return (successCount, failedCount, errors);
+        }
+
+        public int GetTotalStockInAllWarehouses()
+        {
+            return _stocks.Sum(s => s.Quantity);
+        }
+
+        public Dictionary<string, int> GetStockSummaryByWarehouse()
+        {
+            return _stocks
+                .GroupBy(s => s.WarehouseId)
+                .ToDictionary(
+                    g => GetWarehouseById(g.Key)?.Name ?? "Bilinmeyen",
+                    g => g.Sum(s => s.Quantity)
+                );
         }
     }
 

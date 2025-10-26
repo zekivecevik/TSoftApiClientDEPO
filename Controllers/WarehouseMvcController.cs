@@ -1,3 +1,4 @@
+// Controllers/WarehouseMvcController.cs - TAMAMI
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TSoftApiClient.Services;
@@ -26,6 +27,11 @@ namespace TSoftApiClient.Controllers
         public IActionResult Index()
         {
             var warehouses = _warehouseService.GetAllWarehouses();
+            ViewBag.TotalStock = _warehouseService.GetTotalStockInAllWarehouses();
+
+            var allStocks = _warehouseService.GetWarehouseStocks(0);
+            ViewBag.UniqueProducts = allStocks.Select(s => s.Barcode).Distinct().Count();
+
             return View("~/Views/Warehouses/Index.cshtml", warehouses);
         }
 
@@ -95,14 +101,29 @@ namespace TSoftApiClient.Controllers
         [Authorize(Roles = "Admin")]
         public IActionResult Delete(int id)
         {
-            var result = _warehouseService.DeleteWarehouse(id);
-            if (result)
+            try
             {
-                TempData["Success"] = "Depo başarıyla silindi";
+                var stocks = _warehouseService.GetWarehouseStocks(id);
+                if (stocks.Count > 0)
+                {
+                    TempData["Error"] = $"Bu depoda {stocks.Count} adet stok kaydı var. Önce stokları temizleyin veya transfer edin.";
+                    return RedirectToAction("Index");
+                }
+
+                var result = _warehouseService.DeleteWarehouse(id);
+                if (result)
+                {
+                    TempData["Success"] = "Depo başarıyla silindi";
+                }
+                else
+                {
+                    TempData["Error"] = "Depo bulunamadı";
+                }
             }
-            else
+            catch (Exception ex)
             {
-                TempData["Error"] = "Depo silinemedi";
+                _logger.LogError(ex, "Depo silme hatası");
+                TempData["Error"] = "Bir hata oluştu: " + ex.Message;
             }
 
             return RedirectToAction("Index");
@@ -245,6 +266,41 @@ namespace TSoftApiClient.Controllers
                 _logger.LogError(ex, "Barkod arama hatası");
                 return Json(new { success = false, message = "Bir hata oluştu" });
             }
+        }
+
+        [Route("/Warehouses/SyncProducts")]
+        [HttpPost]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> SyncProducts()
+        {
+            try
+            {
+                var products = await _tsoftService.GetProductsAsync(limit: 1000);
+
+                if (!products.Success || products.Data == null)
+                {
+                    TempData["Error"] = "Ürünler yüklenemedi";
+                    return RedirectToAction("Index");
+                }
+
+                var result = _warehouseService.SyncProductsToDefaultWarehouse(products.Data);
+
+                if (result.Success > 0)
+                {
+                    TempData["Success"] = $"✅ {result.Success} ürün Ana Depoya eklendi. {result.Failed} hata.";
+                }
+                else
+                {
+                    TempData["Error"] = $"❌ Hiç ürün eklenemedi. Hatalar: {string.Join(", ", result.Errors.Take(3))}";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ürün senkronizasyon hatası");
+                TempData["Error"] = "Bir hata oluştu: " + ex.Message;
+            }
+
+            return RedirectToAction("Index");
         }
     }
 }
