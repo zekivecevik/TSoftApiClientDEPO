@@ -44,10 +44,33 @@
             @if (User?.IsInRole("Admin") == true)
             {
                 <div style="margin: 16px 0; border-top: 1px solid rgba(124, 58, 237, 0.15);"></div>
-                <a href="/Admin" class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" || ViewContext.RouteData.Values["Controller"]?.ToString() == "AdminUsers" ? "active" : "")" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
-                    <span class="nav-icon">👑</span>
-                    <span class="nav-text">Admin Panel</span>
-                </a>
+                <div class="nav-item-dropdown">
+                    <div class="nav-item nav-item-parent @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" || ViewContext.RouteData.Values["Controller"]?.ToString() == "AdminUsers" || ViewContext.RouteData.Values["Controller"]?.ToString() == "License" ? "active" : "")" onclick="toggleDropdown(this)" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); cursor: pointer;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                            <span class="nav-icon">👑</span>
+                            <span class="nav-text">Yönetim</span>
+                        </div>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="nav-dropdown">
+                        <a href="/Admin" class="nav-dropdown-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Panel</span>
+                        </a>
+                        <a href="/Admin/Users" class="nav-dropdown-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["Action"]?.ToString() == "Users" ? "active" : "")">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Kullanıcılar</span>
+                        </a>
+                        <a href="/Admin/Logs" class="nav-dropdown-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["Action"]?.ToString() == "Logs" ? "active" : "")">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Loglar</span>
+                        </a>
+                        <a href="/License" class="nav-dropdown-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "License" ? "active" : "")">
+                            <span class="nav-icon">🔑</span>
+                            <span class="nav-text">Lisans</span>
+                        </a>
+                    </div>
+                </div>
             }
 
             <div style="margin: 16px 0; border-top: 1px solid rgba(124, 58, 237, 0.15);"></div>
@@ -154,6 +177,21 @@
 
             if (window.innerWidth > 768) {
                 document.body.classList.toggle('sidebar-collapsed');
+            }
+        }
+
+        function toggleDropdown(element) {
+            const parent = element.closest('.nav-item-dropdown');
+            const isOpen = parent.classList.contains('open');
+
+            // Tüm dropdown'ları kapat
+            document.querySelectorAll('.nav-item-dropdown').forEach(item => {
+                item.classList.remove('open');
+            });
+
+            // Eğer kapalıysa aç
+            if (!isOpen) {
+                parent.classList.add('open');
             }
         }
 
@@ -370,6 +408,71 @@
                 display: flex;
             }
         }
+
+        /* Dropdown Styles */
+        .nav-item-dropdown {
+            position: relative;
+        }
+
+        .nav-item-parent {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dropdown-arrow {
+            font-size: 10px;
+            transition: transform 0.3s ease;
+            color: var(--text-secondary);
+        }
+
+        .nav-item-dropdown.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .nav-dropdown {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding-left: 16px;
+        }
+
+        .nav-item-dropdown.open .nav-dropdown {
+            max-height: 500px;
+        }
+
+        .nav-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            margin: 4px 0;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+            .nav-dropdown-item:hover {
+                background: rgba(124, 58, 237, 0.1);
+                border-color: rgba(124, 58, 237, 0.3);
+                color: var(--primary);
+                transform: translateX(4px);
+            }
+
+            .nav-dropdown-item.active {
+                background: rgba(124, 58, 237, 0.15);
+                border-color: rgba(124, 58, 237, 0.4);
+                color: var(--primary);
+            }
+
+            .nav-dropdown-item .nav-icon {
+                font-size: 16px;
+            }
     </style>
 
     @await RenderSectionAsync("Scripts", required: false)
