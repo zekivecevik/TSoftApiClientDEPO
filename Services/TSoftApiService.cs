@@ -16,6 +16,7 @@ namespace TSoftApiClient.Services
     /// <summary>
     /// T-Soft REST API Client - Supports both V3 and REST1 APIs
     /// COMPLETE VERSION - ALL METHODS IN ONE FILE
+    /// ORDER2 API INTEGRATED - 2025-01-26
     /// </summary>
     public class TSoftApiService
     {
@@ -419,42 +420,66 @@ namespace TSoftApiClient.Services
                 relation_hierarchy = new[] { new { id = categoryId, type = "category" } }
             };
 
-            var v3Endpoints = new[] { "/catalog/products", "/api/v3/catalog/products" };
+            var extraForm = extraFields ?? new Dictionary<string, string>();
+            extraForm["ProductCode"] = code;
+            extraForm["ProductName"] = name;
+            extraForm["CategoryCode"] = categoryCode;
+            extraForm["Price"] = price.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            extraForm["Stock"] = stock.ToString();
+
+            // REST1 denemeleri
+            var rest1Endpoints = new[] { "/product/addProduct", "/product/add", "/products/create" };
+
+            foreach (var endpoint in rest1Endpoints)
+            {
+                var (success, body, _) = await Rest1PostAsync(endpoint, extraForm, ct);
+                if (success)
+                {
+                    _logger.LogInformation("✅ REST1 add product succeeded: {Endpoint}", endpoint);
+                    return ParseResponse<Product>(body);
+                }
+            }
+
+            // V3 POST denemesi
+            var v3Endpoints = new[] { "/catalog/products", "/api/v3/catalog/products", "/products" };
             foreach (var endpoint in v3Endpoints)
             {
                 var (success, body, _) = await V3PostAsync(endpoint, productV3, ct);
-                if (success) return ParseResponse<Product>(body);
-            }
-
-            var productData = new Dictionary<string, string>
-            {
-                ["ProductCode"] = code,
-                ["ProductName"] = name,
-                ["DefaultCategoryCode"] = categoryCode,
-                ["SellingPrice"] = price.ToString("F2"),
-                ["Stock"] = stock.ToString(),
-                ["IsActive"] = "1"
-            };
-            if (extraFields != null) foreach (var kv in extraFields) productData[kv.Key] = kv.Value;
-
-            var rest1Endpoints = new[] { "/product/createProducts", "/product/create", "/product/add" };
-            foreach (var endpoint in rest1Endpoints)
-            {
-                var formData = new Dictionary<string, string>
+                if (success)
                 {
-                    ["data"] = JsonSerializer.Serialize(new[] { productData })
-                };
-                var (success, body, _) = await Rest1PostAsync(endpoint, formData, ct);
-                if (success) return ParseResponse<Product>(body);
+                    _logger.LogInformation("✅ V3 add product succeeded: {Endpoint}", endpoint);
+                    return ParseResponse<Product>(body);
+                }
             }
 
             return new TSoftApiResponse<Product>
             {
                 Success = false,
-                Message = new() { new() { Text = new() { "All product creation endpoints failed" } } }
+                Message = new() { new() { Text = new() { "All add product endpoints failed" } } }
             };
         }
 
+        /// <summary>
+        /// Product object ile ekleme (alternatif metod)
+        /// </summary>
+        public async Task<TSoftApiResponse<Product>> AddProductAsync(
+            Product product,
+            CancellationToken ct = default)
+        {
+            return await AddProductAsync(
+                product.ProductCode ?? "",
+                product.ProductName ?? "",
+                product.DefaultCategoryCode ?? "",
+                decimal.TryParse(product.Price, out var p) ? p : 0,
+                int.TryParse(product.Stock, out var s) ? s : 0,
+                null,
+                ct
+            );
+        }
+
+        /// <summary>
+        /// Toplu ürün ekleme
+        /// </summary>
         public async Task<TSoftApiResponse<object>> CreateProductsAsync(List<Product> products, CancellationToken ct = default)
         {
             var ok = new List<object>();
@@ -483,18 +508,98 @@ namespace TSoftApiClient.Services
             };
         }
 
+        public async Task<TSoftApiResponse<Product>> UpdateProductAsync(
+            Product product,
+            CancellationToken ct = default)
+        {
+            var form = new Dictionary<string, string>
+            {
+                ["ProductCode"] = product.ProductCode ?? "",
+                ["ProductId"] = product.ProductId ?? ""
+            };
+
+            if (!string.IsNullOrEmpty(product.ProductName)) form["ProductName"] = product.ProductName;
+            if (!string.IsNullOrEmpty(product.Price)) form["Price"] = product.Price;
+            if (!string.IsNullOrEmpty(product.Stock)) form["Stock"] = product.Stock;
+
+            var (success, body, _) = await Rest1PostAsync("/product/updateProduct", form, ct);
+            return success
+                ? ParseResponse<Product>(body)
+                : new TSoftApiResponse<Product> { Success = false, Message = new() { new() { Text = new() { "Update product failed" } } } };
+        }
+
+        public async Task<TSoftApiResponse<object>> DeleteProductAsync(
+            string productCode,
+            CancellationToken ct = default)
+        {
+            var (success, body, _) = await Rest1PostAsync("/product/deleteProduct", new Dictionary<string, string>
+            {
+                ["ProductCode"] = productCode
+            }, ct);
+
+            return new TSoftApiResponse<object> { Success = success };
+        }
+
+        public async Task<TSoftApiResponse<Product>> GetProductByCodeAsync(
+            string productCode,
+            CancellationToken ct = default)
+        {
+            var form = new Dictionary<string, string>
+            {
+                ["ProductCode"] = productCode,
+                ["productCode"] = productCode,
+                ["ProductId"] = productCode,
+                ["productId"] = productCode
+            };
+
+            var rest1Endpoints = new[] { "/product/getProduct", "/product/getProductByCode", "/product/get" };
+            foreach (var endpoint in rest1Endpoints)
+            {
+                var (success, body, _) = await Rest1PostAsync(endpoint, form, ct);
+                if (success)
+                {
+                    var result = ParseResponse<Product>(body);
+                    if (result.Success && result.Data != null) return result;
+                }
+            }
+
+            var v3Endpoints = new[] { $"/catalog/products/{productCode}", $"/products/{productCode}" };
+            foreach (var endpoint in v3Endpoints)
+            {
+                var (success, body, _) = await V3GetAsync(endpoint, null, ct);
+                if (success) return ParseResponse<Product>(body);
+            }
+
+            return new TSoftApiResponse<Product> { Success = false, Message = new() { new() { Text = new() { $"Product not found: {productCode}" } } } };
+        }
+
+        public async Task<TSoftApiResponse<object>> UpdateProductStockAsync(
+            string productCode,
+            int newStock,
+            CancellationToken ct = default)
+        {
+            var (success, body, _) = await Rest1PostAsync("/product/updateStock", new Dictionary<string, string>
+            {
+                ["ProductCode"] = productCode,
+                ["Stock"] = newStock.ToString()
+            }, ct);
+
+            return new TSoftApiResponse<object> { Success = success };
+        }
+
         // ========== CATEGORY OPERATIONS ==========
 
         public async Task<TSoftApiResponse<List<Category>>> GetCategoriesAsync(CancellationToken ct = default)
         {
             var rest1Endpoints = new[] { "/category/getCategories", "/category/get", "/categories/get" };
+
             foreach (var endpoint in rest1Endpoints)
             {
                 var (success, body, _) = await Rest1PostAsync(endpoint, new Dictionary<string, string>(), ct);
                 if (success) return ParseResponse<List<Category>>(body);
             }
 
-            var v3Endpoints = new[] { "/catalog/categories", "/api/v3/catalog/categories" };
+            var v3Endpoints = new[] { "/catalog/categories", "/api/v3/catalog/categories", "/categories" };
             foreach (var endpoint in v3Endpoints)
             {
                 var (success, body, _) = await V3GetAsync(endpoint, null, ct);
@@ -730,29 +835,184 @@ namespace TSoftApiClient.Services
             };
         }
 
+        /// <summary>
+        /// ⭐ UPDATED METHOD - Order2 API integrated for better order details retrieval
+        /// Sipariş detaylarını OrderId ile çeker
+        /// Önce order2 endpoint'lerini dener, sonra REST1 ve V3 fallback
+        /// </summary>
         public async Task<TSoftApiResponse<List<OrderDetail>>> GetOrderDetailsByOrderIdAsync(int orderId, CancellationToken ct = default)
         {
+            _logger.LogInformation("🔍 Fetching order details for OrderId: {OrderId}", orderId);
+
             var form = new Dictionary<string, string>
             {
                 ["OrderId"] = orderId.ToString(),
-                ["orderId"] = orderId.ToString()
+                ["orderId"] = orderId.ToString(),
+                ["id"] = orderId.ToString()
             };
 
-            var rest1Endpoints = new[] { "/order/getOrderDetailsByOrderId", "/order/getOrderDetails", "/order/details", "/orders/details" };
+            // ✅ 1. ÖNCE ORDER2 ENDPOINT'LERİNİ DENE (YENİ!)
+            var order2Endpoints = new[]
+            {
+                $"/order2/getOrderDetailsByOrderId/{orderId}",
+                $"/order2/getOrderDetails/{orderId}",
+                "/order2/getOrderDetailsByOrderId",
+                "/order2/getOrderDetails"
+            };
+
+            _logger.LogDebug("🔹 Trying ORDER2 endpoints first...");
+            foreach (var endpoint in order2Endpoints)
+            {
+                try
+                {
+                    // Eğer endpoint'te {orderId} yoksa form data kullan
+                    var (success, body, status) = endpoint.Contains($"/{orderId}")
+                        ? await Rest1PostAsync(endpoint, new Dictionary<string, string>(), ct)
+                        : await Rest1PostAsync(endpoint, form, ct);
+
+                    if (_debug)
+                    {
+                        _logger.LogDebug("📞 Order2 endpoint: {Endpoint}, Status: {Status}, Body length: {Length}",
+                            endpoint, status, body?.Length ?? 0);
+                    }
+
+                    if (success && !string.IsNullOrEmpty(body))
+                    {
+                        var parsed = ParseResponse<List<OrderDetail>>(body);
+                        if (parsed.Success && parsed.Data != null && parsed.Data.Count > 0)
+                        {
+                            _logger.LogInformation("✅ Order2 endpoint SUCCESS: {Endpoint}, Items: {Count}",
+                                endpoint, parsed.Data.Count);
+                            return parsed;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "⚠️ Order2 endpoint failed: {Endpoint}", endpoint);
+                }
+            }
+
+            // ✅ 2. FALLBACK: REST1 ENDPOINT'LERİ
+            _logger.LogDebug("🔹 Trying REST1 endpoints as fallback...");
+            var rest1Endpoints = new[]
+            {
+                "/order/getOrderDetailsByOrderId",
+                "/order/getOrderDetails",
+                "/order/details",
+                "/orders/details",
+                "/orderdetails/get"
+            };
+
             foreach (var endpoint in rest1Endpoints)
             {
                 var (success, body, _) = await Rest1PostAsync(endpoint, form, ct);
-                if (success)
+                if (success && !string.IsNullOrEmpty(body))
                 {
                     var parsed = ParseResponse<List<OrderDetail>>(body);
-                    if (parsed.Success && parsed.Data != null) return parsed;
+                    if (parsed.Success && parsed.Data != null && parsed.Data.Count > 0)
+                    {
+                        _logger.LogInformation("✅ REST1 endpoint SUCCESS: {Endpoint}, Items: {Count}",
+                            endpoint, parsed.Data.Count);
+                        return parsed;
+                    }
+                }
+            }
+
+            // ✅ 3. SON ÇARE: V3 API
+            _logger.LogDebug("🔹 Trying V3 API as last resort...");
+            var v3Endpoints = new[]
+            {
+                $"/orders/{orderId}/details",
+                $"/api/v3/orders/{orderId}/details",
+                $"/order/{orderId}/items"
+            };
+
+            foreach (var endpoint in v3Endpoints)
+            {
+                var (success, body, _) = await V3GetAsync(endpoint, null, ct);
+                if (success && !string.IsNullOrEmpty(body))
+                {
+                    var parsed = ParseResponse<List<OrderDetail>>(body);
+                    if (parsed.Success && parsed.Data != null && parsed.Data.Count > 0)
+                    {
+                        _logger.LogInformation("✅ V3 endpoint SUCCESS: {Endpoint}, Items: {Count}",
+                            endpoint, parsed.Data.Count);
+                        return parsed;
+                    }
+                }
+            }
+
+            _logger.LogWarning("❌ ALL ENDPOINTS FAILED for OrderId: {OrderId}", orderId);
+            return new TSoftApiResponse<List<OrderDetail>>
+            {
+                Success = false,
+                Message = new() { new() { Text = new() { $"Order details not found for OrderId: {orderId}" } } }
+            };
+        }
+
+        /// <summary>
+        /// ⭐ NEW METHOD - OrderCode ile sipariş detaylarını çeker (alternatif metod)
+        /// </summary>
+        public async Task<TSoftApiResponse<List<OrderDetail>>> GetOrderDetailsByOrderCodeAsync(string orderCode, CancellationToken ct = default)
+        {
+            _logger.LogInformation("🔍 Fetching order details for OrderCode: {OrderCode}", orderCode);
+
+            var form = new Dictionary<string, string>
+            {
+                ["OrderCode"] = orderCode,
+                ["orderCode"] = orderCode,
+                ["code"] = orderCode
+            };
+
+            // Order2 endpoint'leri dene
+            var order2Endpoints = new[]
+            {
+                $"/order2/getOrderDetailsByOrderCode/{orderCode}",
+                "/order2/getOrderDetailsByOrderCode"
+            };
+
+            foreach (var endpoint in order2Endpoints)
+            {
+                var (success, body, _) = endpoint.Contains($"/{orderCode}")
+                    ? await Rest1PostAsync(endpoint, new Dictionary<string, string>(), ct)
+                    : await Rest1PostAsync(endpoint, form, ct);
+
+                if (success && !string.IsNullOrEmpty(body))
+                {
+                    var parsed = ParseResponse<List<OrderDetail>>(body);
+                    if (parsed.Success && parsed.Data != null && parsed.Data.Count > 0)
+                    {
+                        _logger.LogInformation("✅ Order details found by OrderCode: {Count} items", parsed.Data.Count);
+                        return parsed;
+                    }
+                }
+            }
+
+            // REST1 fallback
+            var rest1Endpoints = new[]
+            {
+                "/order/getOrderDetailsByOrderCode",
+                "/order/getDetails"
+            };
+
+            foreach (var endpoint in rest1Endpoints)
+            {
+                var (success, body, _) = await Rest1PostAsync(endpoint, form, ct);
+                if (success && !string.IsNullOrEmpty(body))
+                {
+                    var parsed = ParseResponse<List<OrderDetail>>(body);
+                    if (parsed.Success && parsed.Data != null && parsed.Data.Count > 0)
+                    {
+                        return parsed;
+                    }
                 }
             }
 
             return new TSoftApiResponse<List<OrderDetail>>
             {
                 Success = false,
-                Message = new() { new() { Text = new() { "Order details endpoint failed" } } }
+                Message = new() { new() { Text = new() { $"Order details not found for OrderCode: {orderCode}" } } }
             };
         }
 

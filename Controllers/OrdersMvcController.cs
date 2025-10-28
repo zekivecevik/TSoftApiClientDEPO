@@ -31,7 +31,6 @@ namespace TSoftApiClient.Controllers
             {
                 _logger.LogInformation("📦 Fetching orders - Page: {Page}, Limit: {Limit}", page, limit);
 
-                // ✅ FIXED: Page ve offset parametrelerini gönder
                 var filters = new Dictionary<string, string>
                 {
                     ["page"] = page.ToString(),
@@ -56,7 +55,18 @@ namespace TSoftApiClient.Controllers
                 var orders = result.Data ?? new List<Models.Order>();
                 _logger.LogInformation("✅ Orders loaded successfully: {Count} orders", orders.Count);
 
-                // ⚡ SMART ORDER DETAILS FETCHING
+                // DEBUG: İlk siparişin bilgilerini kontrol et
+                if (orders.Count > 0)
+                {
+                    var firstOrder = orders[0];
+                    _logger.LogWarning("🏙️ First Order Info: City={City}, ShippingCity={ShippingCity}, OrderStatusId={StatusId}, OrderStatus={Status}, PaymentType={Payment}",
+                        firstOrder.City ?? "NULL",
+                        firstOrder.ShippingCity ?? "NULL",
+                        firstOrder.OrderStatusId ?? "NULL",
+                        firstOrder.OrderStatus ?? "NULL",
+                        firstOrder.PaymentType ?? "NULL");
+                }
+
                 if (_detailsApiWorking && orders.Count > 0)
                 {
                     _logger.LogInformation("🔍 Attempting to fetch order details...");
@@ -95,13 +105,18 @@ namespace TSoftApiClient.Controllers
                                             order.OrderDetails = detailsResult.Data;
                                             order.ItemCount = detailsResult.Data.Count;
 
+                                            // Şehir bilgisini DeliveryCity'den al
                                             if (string.IsNullOrEmpty(order.City) && string.IsNullOrEmpty(order.ShippingCity))
                                             {
                                                 var firstDetail = detailsResult.Data.FirstOrDefault();
-                                                order.City = firstDetail?.City;
-                                                order.ShippingCity = firstDetail?.ShippingCity;
+                                                if (firstDetail != null)
+                                                {
+                                                    order.City = firstDetail.DeliveryCity ?? firstDetail.InvoiceCity ?? firstDetail.City;
+                                                    order.ShippingCity = firstDetail.DeliveryCity;
+                                                }
                                             }
 
+                                            // Paketleme durumunu doldur
                                             if (string.IsNullOrEmpty(order.SupplyStatus))
                                             {
                                                 var firstDetail = detailsResult.Data.FirstOrDefault();
@@ -149,7 +164,6 @@ namespace TSoftApiClient.Controllers
                     ViewBag.Warning = "Sipariş detayları gösterilemiyor (API yetki sorunu).";
                 }
 
-                // Pagination info
                 ViewBag.CurrentPage = page;
                 ViewBag.PageSize = limit;
                 ViewBag.HasMore = orders.Count >= limit;
@@ -164,15 +178,56 @@ namespace TSoftApiClient.Controllers
             }
         }
 
-        /// <summary>
-        /// Reset the details API flag (for testing)
-        /// </summary>
         [Route("/Orders/ResetApiFlag")]
         public IActionResult ResetApiFlag()
         {
             _detailsApiWorking = true;
             TempData["Success"] = "API flag reset. Details fetching will be attempted again.";
             return RedirectToAction("Index");
+        }
+
+        /// <summary>
+        /// Sipariş detaylarını çeker (Modal için API endpoint)
+        /// GET /api/orders/{orderId}/details
+        /// </summary>
+        [HttpGet]
+        [Route("/api/orders/{orderId}/details")]
+        public async Task<IActionResult> GetOrderDetails(int orderId)
+        {
+            try
+            {
+                _logger.LogInformation("📦 API: Fetching order details for OrderId: {OrderId}", orderId);
+
+                var result = await _tsoftService.GetOrderDetailsByOrderIdAsync(orderId);
+
+                if (!result.Success || result.Data == null)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Sipariş detayları bulunamadı",
+                        data = new List<object>()
+                    });
+                }
+
+                _logger.LogInformation("✅ API: Order details fetched: {Count} items", result.Data.Count);
+
+                return Ok(new
+                {
+                    success = true,
+                    data = result.Data
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ API: Error fetching order details for OrderId: {OrderId}", orderId);
+                return Ok(new
+                {
+                    success = false,
+                    message = $"Hata: {ex.Message}",
+                    data = new List<object>()
+                });
+            }
         }
     }
 }

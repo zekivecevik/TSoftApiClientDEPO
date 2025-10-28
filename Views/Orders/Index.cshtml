@@ -145,10 +145,10 @@
                 <label class="form-label">📊 Sipariş Durumu</label>
                 <select id="statusFilter" class="form-select">
                     <option value="">Tümü</option>
-                    <option value="1">Beklemede</option>
-                    <option value="2">İşlemde</option>
-                    <option value="3">Tamamlandı</option>
-                    <option value="4">İptal</option>
+                    @foreach (var status in Model.Select(o => o.OrderStatus ?? o.Status).Distinct().Where(s => !string.IsNullOrEmpty(s)).OrderBy(s => s))
+                    {
+                        <option value="@status">@status</option>
+                    }
                 </select>
             </div>
 
@@ -234,7 +234,10 @@
                             paymentType = order.PaymentType
                         })'>
                             <td style="text-align: center; border-right: 1px solid var(--border);">
-                                <span class="badge badge-primary" style="font-size: 16px; font-weight: 700; padding: 6px 14px;">
+                                <span class="badge badge-primary" 
+                                      style="font-size: 16px; font-weight: 700; padding: 6px 14px; cursor: pointer;"
+                                      onclick="showOrderDetails('@order.OrderId', '@order.OrderCode')"
+                                      title="Sipariş detaylarını göster">
                                     @order.ItemCount
                                 </span>
                             </td>
@@ -272,9 +275,11 @@
                                 {
                                     if (DateTime.TryParse(order.OrderDate, out var dt))
                                     {
-                                        <span style="font-size: 14px; font-weight: 600;">@dt.ToString("dd.MM.yyyy")</span>
+                                        // Sunucu UTC+3'te çalışıyor, -3 saat yaparak TSoft saatini göster
+                                        var tsoftTime = dt.AddHours(-3);
+                                        <span style="font-size: 14px; font-weight: 600;">@tsoftTime.ToString("dd.MM.yyyy")</span>
                                         <br />
-                                        <small style="color: var(--text-secondary); font-size: 13px;">@dt.ToString("HH:mm")</small>
+                                        <small style="color: var(--text-secondary); font-size: 13px;">@tsoftTime.ToString("HH:mm")</small>
                                     }
                                     else
                                     {
@@ -289,7 +294,17 @@
 
                             <td style="text-align: center; border-right: 1px solid var(--border);">
                                 <span style="font-size: 14px; font-weight: 600;">
-                                    @(order.City ?? order.ShippingCity ?? "N/A")
+                                    @{
+                                        var cityDisplay = order.City ?? order.ShippingCity;
+                                        if (string.IsNullOrEmpty(cityDisplay))
+                                        {
+                                            <span style="color: var(--text-secondary);">-</span>
+                                        }
+                                        else
+                                        {
+                                            @cityDisplay
+                                        }
+                                    }
                                 </span>
                             </td>
 
@@ -357,6 +372,8 @@
                                         "hazırlanıyor" => "badge-warning",
                                         "hazirlaniyor" => "badge-warning",
                                         "preparing" => "badge-warning",
+                                        "işlem bekleniyor" => "badge-warning",
+                                        "islem bekleniyor" => "badge-warning",
                                         "hazır" => "badge-info",
                                         "hazir" => "badge-info",
                                         "ready" => "badge-info",
@@ -375,21 +392,17 @@
 
                             <td style="text-align: center;">
                                 @{
-                                    var statusBadge = (order.OrderStatusId) switch
+                                    // API'den gelen OrderStatus'u kullan (Ürün Hazırlanıyor, Kargoya Verildi, vb.)
+                                    var statusText = order.OrderStatus ?? order.Status ?? "Bilinmiyor";
+                                    
+                                    // Duruma göre badge rengi
+                                    var statusBadge = statusText.ToLower() switch
                                     {
-                                        "3" => "badge-success",
-                                        "1" => "badge-warning",
-                                        "2" => "badge-info",
-                                        "4" => "badge-danger",
+                                        var s when s.Contains("tamamlan") || s.Contains("teslim") => "badge-success",
+                                        var s when s.Contains("hazırlan") || s.Contains("işlem") || s.Contains("kargoya") => "badge-info",
+                                        var s when s.Contains("bekle") || s.Contains("onay") => "badge-warning",
+                                        var s when s.Contains("iptal") || s.Contains("iade") => "badge-danger",
                                         _ => "badge-secondary"
-                                    };
-                                    var statusText = (order.OrderStatusId) switch
-                                    {
-                                        "3" => "Tamamlandı",
-                                        "1" => "Beklemede",
-                                        "2" => "İşlemde",
-                                        "4" => "İptal",
-                                        _ => order.OrderStatus ?? order.Status ?? $"ID: {order.OrderStatusId}"
                                     };
                                 }
                                 <span class="badge @statusBadge" style="font-size: 13px; padding: 6px 12px;">@statusText</span>
@@ -440,6 +453,30 @@
             </div>
         </div>
     }
+</div>
+
+<!-- 📦 SİPARİŞ DETAY MODAL -->
+<div id="orderDetailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow-y: auto; padding: 40px 20px;">
+    <div style="max-width: 900px; margin: 0 auto; background: var(--bg-card); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); position: relative;">
+        <!-- Modal Header -->
+        <div style="padding: 24px; border-bottom: 2px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--bg-card); border-radius: 16px 16px 0 0; z-index: 10;">
+            <h3 style="margin: 0; color: var(--text-primary);">
+                <span style="font-size: 24px;">📦</span> 
+                <span id="modalOrderCode">Sipariş Detayları</span>
+            </h3>
+            <button onclick="closeOrderDetails()" style="background: none; border: none; font-size: 32px; cursor: pointer; color: var(--text-secondary); line-height: 1; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">×</button>
+        </div>
+
+        <!-- Modal Body -->
+        <div id="modalBody" style="padding: 24px; max-height: calc(80vh - 100px); overflow-y: auto;">
+            <div style="text-align: center; padding: 40px;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Yükleniyor...</span>
+                </div>
+                <p style="margin-top: 16px; color: var(--text-secondary);">Sipariş detayları yükleniyor...</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -560,5 +597,205 @@
             link.download = `siparisler_sayfa_${@currentPage}_${new Date().toISOString().split('T')[0]}.csv`;
             link.click();
         }
+
+        // 📦 MODAL FONKSİYONLARI
+        async function showOrderDetails(orderId, orderCode) {
+            const modal = document.getElementById('orderDetailsModal');
+            const modalBody = document.getElementById('modalBody');
+            const modalOrderCode = document.getElementById('modalOrderCode');
+            
+            modalOrderCode.textContent = `Sipariş: ${orderCode || orderId}`;
+            modal.style.display = 'block';
+            
+            // Loading state
+            modalBody.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p style="margin-top: 16px; color: var(--text-secondary);">Sipariş detayları yükleniyor...</p>
+                </div>
+            `;
+            
+            try {
+                // OrderDetails'i backend'den çek
+                const response = await fetch(`/api/orders/${orderId}/details`);
+                
+                if (!response.ok) {
+                    throw new Error('API çağrısı başarısız');
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success || !result.data || result.data.length === 0) {
+                    modalBody.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+                            <h4>Ürün bulunamadı</h4>
+                            <p style="color: var(--text-secondary);">Bu siparişe ait ürün bulunamadı.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Başarılı - ürünleri göster
+                let html = '<div style="display: grid; gap: 16px;">';
+                
+                // DEBUG: Tüm item'ı console'a yazdır
+                console.log('🔍 Full API Response:', result);
+                if (result.data.length > 0) {
+                    console.log('🔍 First Item Full Data:', result.data[0]);
+                    console.log('💰 Price Fields:', {
+                        SellingPrice: result.data[0].SellingPrice,
+                        sellingPrice: result.data[0].sellingPrice,
+                        SellingCartPrice: result.data[0].SellingCartPrice,
+                        Price: result.data[0].Price,
+                        price: result.data[0].price,
+                        Total: result.data[0].Total
+                    });
+                }
+                
+                result.data.forEach((item, index) => {
+                    // Fiyat bilgileri (API'den büyük harfle geliyor!)
+                    const price = parseFloat(
+                        item.SellingPrice || 
+                        item.sellingPrice || 
+                        item.Price || 
+                        item.price || 
+                        item.SellingCartPrice || 
+                        item.sellingCartPrice || 
+                        item.SellingPriceWithoutVat || 
+                        item.Total || 
+                        item.total || 
+                        0
+                    );
+                    const qty = parseInt(item.Quantity || item.quantity || 1);
+                    const total = price * qty;
+                    
+                    console.log(`💰 Item ${index}:`, {
+                        SellingPrice: item.SellingPrice,
+                        Price: item.Price,
+                        Total: item.Total,
+                        calculated: price
+                    });
+                    
+                    // Varyant bilgileri (Property1=Renk, Property2=Beden)
+                    const color = item.Property1 || item.property1 || '';
+                    const size = item.Property2 || item.property2 || '';
+                    const variantText = [color, size].filter(v => v).join(' - ');
+                    
+                    html += `
+                        <div style="border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--bg-primary);">
+                            <div style="display: flex; gap: 16px; align-items: start;">
+                                ${item.ImageUrl || item.imageUrl ? `
+                                    <img src="${item.ImageUrl || item.imageUrl}" 
+                                         style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);"
+                                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2232%22%3E📦%3C/text%3E%3C/svg%3E'">
+                                ` : `
+                                    <div style="width: 100px; height: 100px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 40px;">
+                                        📦
+                                    </div>
+                                `}
+                                
+                                <div style="flex: 1;">
+                                    <h5 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 18px;">
+                                        ${item.ProductName || item.productName || 'Ürün Adı Yok'}
+                                    </h5>
+                                    
+                                    <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; margin-bottom: 12px;">
+                                        ${(item.ProductCode || item.productCode) ? `
+                                            <span style="background: var(--bg-secondary); padding: 4px 10px; border-radius: 6px;">
+                                                🏷️ <strong>${item.ProductCode || item.productCode}</strong>
+                                            </span>
+                                        ` : ''}
+                                        
+                                        ${variantText ? `
+                                            <span style="background: var(--bg-secondary); padding: 4px 10px; border-radius: 6px;">
+                                                🎨 <strong>${variantText}</strong>
+                                            </span>
+                                        ` : ''}
+                                        
+                                        ${(item.Barcode || item.barcode) ? `
+                                            <span style="background: var(--bg-secondary); padding: 4px 10px; border-radius: 6px; font-size: 13px;">
+                                                📊 ${item.Barcode || item.barcode}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    
+                                    <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+                                        <div>
+                                            <small style="color: var(--text-secondary); font-size: 12px;">Adet</small>
+                                            <div style="font-weight: 700; font-size: 20px; color: var(--text-primary);">×${qty}</div>
+                                        </div>
+                                        <div>
+                                            <small style="color: var(--text-secondary); font-size: 12px;">Birim Fiyat</small>
+                                            <div style="font-weight: 700; font-size: 20px; color: var(--primary);">₺${price.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                        </div>
+                                        <div>
+                                            <small style="color: var(--text-secondary); font-size: 12px;">Toplam</small>
+                                            <div style="font-weight: 700; font-size: 22px; color: var(--success);">₺${total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Genel toplam
+                const grandTotal = result.data.reduce((sum, item) => {
+                    const price = parseFloat(
+                        item.SellingPrice || 
+                        item.sellingPrice || 
+                        item.Price || 
+                        item.price || 
+                        item.SellingCartPrice || 
+                        item.Total || 
+                        0
+                    );
+                    const qty = parseInt(item.Quantity || item.quantity || 1);
+                    return sum + (price * qty);
+                }, 0);
+                
+                html += `
+                    <div style="border-top: 2px solid var(--border); padding-top: 20px; margin-top: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <h4 style="margin: 0; font-size: 20px;">Genel Toplam</h4>
+                            <h3 style="margin: 0; color: var(--success); font-size: 28px;">₺${grandTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</h3>
+                        </div>
+                        <small style="color: var(--text-secondary); font-size: 14px;">Toplam ${result.data.length} ürün</small>
+                    </div>
+                `;
+                
+                html += '</div>';
+                modalBody.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading order details:', error);
+                modalBody.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                        <h4>Bir hata oluştu</h4>
+                        <p style="color: var(--text-secondary);">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function closeOrderDetails() {
+            document.getElementById('orderDetailsModal').style.display = 'none';
+        }
+
+        // Modal dışına tıklanınca kapat
+        document.getElementById('orderDetailsModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeOrderDetails();
+            }
+        });
+
+        // ESC tuşu ile kapat
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeOrderDetails();
+            }
+        });
     </script>
 }

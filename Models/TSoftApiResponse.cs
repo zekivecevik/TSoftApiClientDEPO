@@ -230,88 +230,58 @@ namespace TSoftApiClient.Models
         [JsonPropertyName("Nitelik2")]
         public string? Nitelik2 { get; set; }
 
-        // Stok
-        [JsonPropertyName("stock")]
+        // Stock
         public string? Stock { get; set; }
-
-        [JsonPropertyName("stockQuantity")]
+        public string? StockCode { get; set; }
         public string? StockQuantity { get; set; }
+        public string? Available { get; set; }
 
-        [JsonPropertyName("availableStock")]
-        public string? AvailableStock { get; set; }
-
-        // Fiyat
-        [JsonPropertyName("price")]
+        // Prices
         public string? Price { get; set; }
-
-        [JsonPropertyName("sellingPrice")]
         public string? SellingPrice { get; set; }
-
-        [JsonPropertyName("buyingPrice")]
         public string? BuyingPrice { get; set; }
 
-        // Durum
-        [JsonPropertyName("isActive")]
+        // Status
         public string? IsActive { get; set; }
-
-        [JsonPropertyName("isAvailable")]
         public string? IsAvailable { get; set; }
+        public string? Status { get; set; }
 
-        // Barkod
-        [JsonPropertyName("barcode")]
+        // Barcode
         public string? Barcode { get; set; }
 
-        [JsonPropertyName("sku")]
-        public string? Sku { get; set; }
-
-        [JsonPropertyName("modelCode")]
-        public string? ModelCode { get; set; }
-
-        // Görsel
-        [JsonPropertyName("image")]
-        public string? Image { get; set; }
-
-        [JsonPropertyName("imageUrl")]
-        public string? ImageUrl { get; set; }
-
-        [JsonPropertyName("thumbnail")]
-        public string? Thumbnail { get; set; }
-
-        [JsonPropertyName("thumbnailUrl")]
-        public string? ThumbnailUrl { get; set; }
-
-        // ========== HELPER METODLAR ==========
-
         /// <summary>
-        /// Renk değerini döner (JavaScript kodundaki gibi TÜM olası alanları kontrol eder)
+        /// Rengi tüm olası alanlardan bulmaya çalış
         /// </summary>
-        public string GetColor() =>
-            Color ?? Colour ?? ColorName ?? ColorCode ?? Renk ??
-            Property1 ?? PropertyValue1 ?? Variant1 ?? Attribute1 ?? Option1 ?? Nitelik1 ?? "";
-
-        /// <summary>
-        /// Beden değerini döner (JavaScript kodundaki gibi TÜM olası alanları kontrol eder)
-        /// </summary>
-        public string GetSize() =>
-            Size ?? SizeName ?? SizeCode ?? Beden ??
-            Property2 ?? PropertyValue2 ?? Variant2 ?? Attribute2 ?? Option2 ?? Nitelik2 ?? "";
-
-        /// <summary>
-        /// Stok miktarını integer olarak döner
-        /// </summary>
-        public int GetStockQuantity()
+        public string GetColor()
         {
-            var stockStr = Stock ?? StockQuantity ?? AvailableStock ?? "0";
-            return int.TryParse(stockStr, out var qty) ? qty : 0;
+            return Color ?? Colour ?? ColorName ?? Renk ??
+                   Property1 ?? PropertyValue1 ?? Variant1 ?? Attribute1 ?? Option1 ?? Nitelik1 ?? "";
         }
 
         /// <summary>
-        /// Fiyatı decimal olarak döner
+        /// Bedeni tüm olası alanlardan bulmaya çalış
+        /// </summary>
+        public string GetSize()
+        {
+            return Size ?? SizeName ?? Beden ??
+                   Property2 ?? PropertyValue2 ?? Variant2 ?? Attribute2 ?? Option2 ?? Nitelik2 ?? "";
+        }
+
+        /// <summary>
+        /// Stok miktarını parse et
+        /// </summary>
+        public int GetStockQuantity()
+        {
+            return int.TryParse(Stock ?? StockQuantity ?? Available, out var qty) ? qty : 0;
+        }
+
+        /// <summary>
+        /// Fiyatı parse et
         /// </summary>
         public decimal GetPrice()
         {
-            var priceStr = SellingPrice ?? Price ?? "0";
-            return decimal.TryParse(priceStr,
+            return decimal.TryParse(
+                Price ?? SellingPrice ?? BuyingPrice,
                 System.Globalization.NumberStyles.Any,
                 System.Globalization.CultureInfo.InvariantCulture,
                 out var price) ? price : 0;
@@ -486,17 +456,65 @@ namespace TSoftApiClient.Models
 
     public class OrderDetail
     {
+        [JsonPropertyName("Id")]
         public string? Id { get; set; }
+
+        [JsonPropertyName("OrderId")]
         public string? OrderId { get; set; }
+
+        [JsonPropertyName("ProductId")]
         public string? ProductId { get; set; }
+
+        [JsonPropertyName("ProductCode")]
         public string? ProductCode { get; set; }
+
+        [JsonPropertyName("ProductName")]
         public string? ProductName { get; set; }
+
+        [JsonPropertyName("Quantity")]
         public string? Quantity { get; set; }
+
+        [JsonPropertyName("Price")]
         public string? Price { get; set; }
+
+        [JsonPropertyName("SellingPrice")]
+        public string? SellingPrice { get; set; }
+
+        [JsonPropertyName("SellingCartPrice")]
+        public string? SellingCartPrice { get; set; }
+
+        [JsonPropertyName("SellingPriceWithoutVat")]
+        public string? SellingPriceWithoutVat { get; set; }
+
+        [JsonPropertyName("Total")]
         public string? Total { get; set; }
+
+        [JsonPropertyName("City")]
         public string? City { get; set; }
+
+        [JsonPropertyName("ShippingCity")]
         public string? ShippingCity { get; set; }
+
+        [JsonPropertyName("DeliveryCity")]
+        public string? DeliveryCity { get; set; }
+
+        [JsonPropertyName("InvoiceCity")]
+        public string? InvoiceCity { get; set; }
+
+        [JsonPropertyName("SupplyStatus")]
         public string? SupplyStatus { get; set; }
+
+        [JsonPropertyName("Property1")]
+        public string? Property1 { get; set; }
+
+        [JsonPropertyName("Property2")]
+        public string? Property2 { get; set; }
+
+        [JsonPropertyName("Barcode")]
+        public string? Barcode { get; set; }
+
+        [JsonPropertyName("ImageUrl")]
+        public string? ImageUrl { get; set; }
     }
 
     public class OrderStatusInfo
