@@ -1,0 +1,557 @@
+@using TSoftApiClient.Models
+@{
+    ViewData["Title"] = "Lisans Aktivasyonu";
+    Layout = null;
+    var currentLicense = ViewBag.CurrentLicense as License;
+    var validation = ViewBag.Validation as LicenseValidationResult;
+    var message = ViewBag.Message as string;
+    var machineId = ViewBag.MachineId as string;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - T-Soft ERP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #7C3AED;
+            --primary-hover: #6D28D9;
+            --bg-main: #0F0F0F;
+            --bg-card: #1A1A1A;
+            --bg-hover: #252525;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A0;
+            --border: #2A2A2A;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --info: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e1b4b 0%, #0F0F0F 100%);
+        }
+
+        .container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 48px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Alert Styles */
+        .alert {
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            border: 1px solid;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @@keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .alert-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+            .alert-content h3 {
+                font-size: 18px;
+                margin-bottom: 8px;
+                font-weight: 600;
+            }
+
+            .alert-content p {
+                font-size: 14px;
+                margin: 4px 0;
+                opacity: 0.9;
+            }
+
+        /* License Info Card */
+        .license-info {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+            .info-row:last-child {
+                border-bottom: none;
+            }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .license-key {
+            background: var(--bg-hover);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.3px;
+        }
+
+        input[type="text"],
+        input[type="email"] {
+            width: 100%;
+            padding: 14px 18px;
+            background: var(--bg-main);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+
+            input[type="text"]:focus,
+            input[type="email"]:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+            }
+
+        input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        .machine-id-box {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+            .machine-id-box .icon {
+                font-size: 20px;
+                color: var(--primary);
+            }
+
+        /* Button */
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+            text-decoration: none;
+        }
+
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 15px 40px rgba(124, 58, 237, 0.4);
+            }
+
+            .btn:active {
+                transform: translateY(0);
+            }
+
+        .btn-secondary {
+            background: var(--bg-main);
+            border: 2px solid var(--border);
+            box-shadow: none;
+            margin-top: 12px;
+        }
+
+            .btn-secondary:hover {
+                background: var(--bg-hover);
+                border-color: var(--primary);
+                box-shadow: 0 10px 30px rgba(124, 58, 237, 0.2);
+            }
+
+        /* Link */
+        .footer-link {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+            .footer-link p {
+                font-size: 13px;
+                color: var(--text-secondary);
+                margin-bottom: 8px;
+            }
+
+            .footer-link a {
+                color: var(--primary);
+                text-decoration: none;
+                font-weight: 600;
+                transition: all 0.2s;
+            }
+
+                .footer-link a:hover {
+                    color: var(--primary-hover);
+                    text-decoration: underline;
+                }
+
+        /* Responsive */
+        @@media (max-width: 640px) {
+            .container {
+                padding: 32px 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .header-icon {
+                width: 64px;
+                height: 64px;
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">🔑</div>
+            <h1>Lisans Aktivasyonu</h1>
+            <p class="subtitle">T-Soft ERP Lisans Yönetim Sistemi</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert alert-error">
+                <div class="alert-icon">❌</div>
+                <div class="alert-content">
+                    <p>@message</p>
+                </div>
+            </div>
+        }
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success">
+                <div class="alert-icon">✅</div>
+                <div class="alert-content">
+                    <h3>Başarılı!</h3>
+                    <p>@TempData["Success"]</p>
+                </div>
+            </div>
+        }
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-error">
+                <div class="alert-icon">❌</div>
+                <div class="alert-content">
+                    <h3>Hata</h3>
+                    <p>@TempData["Error"]</p>
+                </div>
+            </div>
+        }
+
+        @if (currentLicense != null && validation?.IsValid == true)
+        {
+            <!-- Aktif Lisans Var -->
+            <div class="alert alert-success">
+                <div class="alert-icon">✅</div>
+                <div class="alert-content">
+                    <h3>Aktif Lisans Mevcut</h3>
+                    <p>Lisansınız başarıyla aktive edilmiş ve çalışıyor.</p>
+                </div>
+            </div>
+
+            <div class="license-info">
+                <div class="info-row">
+                    <span class="info-label">Şirket</span>
+                    <span class="info-value">@currentLicense.CompanyName</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">E-posta</span>
+                    <span class="info-value">@currentLicense.ContactEmail</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Lisans Key</span>
+                    <span class="info-value">
+                        <span class="license-key">@currentLicense.LicenseKey</span>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Tip</span>
+                    <span class="info-value">
+                        @currentLicense.Type.ToString()
+                        <span class="badge badge-success">✓ Aktif</span>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Bitiş Tarihi</span>
+                    <span class="info-value">@currentLicense.ExpiresAt.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Kalan Süre</span>
+                    <span class="info-value">
+                        @validation.DaysRemaining gün
+                        @if (validation.IsExpiringSoon)
+                        {
+                            <span class="badge badge-warning">⚠️ Yakında Dolacak</span>
+                        }
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Maksimum Kullanıcı</span>
+                    <span class="info-value">@currentLicense.MaxUsers</span>
+                </div>
+            </div>
+
+            <a href="/" class="btn">
+                <span>🏠</span>
+                <span>Ana Sayfaya Dön</span>
+            </a>
+
+            @if (User.IsInRole("Admin"))
+            {
+                <a href="/License/Manage" class="btn btn-secondary">
+                    <span>⚙️</span>
+                    <span>Lisans Yönetimi</span>
+                </a>
+            }
+        }
+        else
+        {
+            <!-- Lisans Aktivasyon Formu -->
+            @if (validation != null && validation.IsExpiringSoon)
+            {
+                <div class="alert alert-warning">
+                    <div class="alert-icon">⚠️</div>
+                    <div class="alert-content">
+                        <h3>Süre Dolum Uyarısı</h3>
+                        <p>Lisansınızın süresi @validation.DaysRemaining gün içinde dolacak!</p>
+                    </div>
+                </div>
+            }
+
+            <form method="post" action="/License/Activate">
+                <div class="form-group">
+                    <label for="licenseKey">
+                        🔑 Lisans Key'i *
+                    </label>
+                    <input type="text"
+                           id="licenseKey"
+                           name="licenseKey"
+                           placeholder="TSOFT-XXXX-XXXX-XXXX-XXXX"
+                           required
+                           pattern="[A-Z0-9\-]+"
+                           style="text-transform: uppercase;" />
+                </div>
+
+                <div class="form-group">
+                    <label for="companyName">
+                        🏢 Şirket Adı *
+                    </label>
+                    <input type="text"
+                           id="companyName"
+                           name="companyName"
+                           placeholder="Şirket adınızı girin"
+                           required />
+                </div>
+
+                <div class="form-group">
+                    <label for="contactEmail">
+                        ✉️ İletişim E-posta *
+                    </label>
+                    <input type="email"
+                           id="contactEmail"
+                           name="contactEmail"
+                           placeholder="ornek@sirket.com"
+                           required />
+                </div>
+
+                <div class="form-group">
+                    <label>🖥️ Makine ID (Otomatik)</label>
+                    <div class="machine-id-box">
+                        <span class="icon">🔒</span>
+                        <span>@machineId</span>
+                    </div>
+                    <input type="hidden" name="machineId" value="@machineId" />
+                </div>
+
+                <button type="submit" class="btn">
+                    <span>🔓</span>
+                    <span>Lisansı Aktive Et</span>
+                </button>
+            </form>
+
+            <div class="footer-link">
+                <p>Lisans key'iniz yok mu?</p>
+                <a href="/Account/Login">Admin kullanıcısı ile giriş yapın →</a>
+            </div>
+        }
+    </div>
+</body>
+</html>

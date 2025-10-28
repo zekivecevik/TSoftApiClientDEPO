@@ -2,13 +2,19 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using TSoftApiClient.Services;
+using TSoftApiClient.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews(); // MVC desteği
 builder.Services.AddControllers();
+
+// ============================================================================
+// CUSTOM SERVICES
+// ============================================================================
 builder.Services.AddSingleton<WarehouseService>();
+builder.Services.AddSingleton<LicenseService>();      // ✅ LİSANS SERVİSİ
 
 // ============================================================================
 // SESSION SUPPORT (for web authentication state)
@@ -72,9 +78,9 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
     {
-        Title = "T-Soft API Client with Authentication",
+        Title = "T-Soft API Client with Authentication & License System",
         Version = "v1",
-        Description = "T-Soft REST1 API ile entegrasyon için ASP.NET Core API + JWT Authentication",
+        Description = "T-Soft REST1 API ile entegrasyon için ASP.NET Core API + JWT Authentication + License Management",
         Contact = new Microsoft.OpenApi.Models.OpenApiContact
         {
             Name = "Geliştirici",
@@ -166,6 +172,11 @@ app.UseSession();
 app.UseAuthentication();  // ⚠️ ÖNCE Authentication
 app.UseAuthorization();   // ⚠️ SONRA Authorization
 
+// ============================================================================
+// ✅ LİSANS DOĞRULAMA MIDDLEWARE (Authorization'dan SONRA!)
+// ============================================================================
+app.UseLicenseValidation();
+
 // MVC Route
 app.MapControllerRoute(
     name: "default",
@@ -179,7 +190,7 @@ app.MapGet("/health", () => Results.Ok(new
 {
     status = "healthy",
     timestamp = DateTime.UtcNow,
-    message = "T-Soft API Client is running with Authentication!"
+    message = "T-Soft API Client is running with Authentication & License System!"
 }))
 .WithName("HealthCheck")
 .AllowAnonymous();
@@ -197,7 +208,5 @@ app.MapGet("/api/auth/demo-users", () => Results.Ok(new
 }))
 .WithName("DemoUsers")
 .AllowAnonymous();
-
-
 
 app.Run();

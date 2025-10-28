@@ -1,0 +1,873 @@
+@model List<TSoftApiClient.Models.License>
+@using TSoftApiClient.Models
+@{
+    ViewData["Title"] = "Lisans Yönetimi";
+    var stats = ViewBag.Statistics as LicenseStatistics;
+    var expiring = ViewBag.ExpiringSoon as List<License>;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - T-Soft ERP</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+
+    <style>
+        :root {
+            --primary: #7C3AED;
+            --primary-hover: #6D28D9;
+            --bg-main: #0F0F0F;
+            --bg-card: #1A1A1A;
+            --bg-hover: #252525;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A0;
+            --border: #2A2A2A;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --info: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            padding: 20px;
+        }
+
+        .page-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        /* Header */
+        .page-header {
+            margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .page-title {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+            .page-title h1 {
+                font-size: 28px;
+                font-weight: 700;
+            }
+
+            .page-title .icon {
+                width: 48px;
+                height: 48px;
+                background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+            }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+        }
+
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+            }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+            .btn-secondary:hover {
+                background: var(--bg-hover);
+                transform: translateY(-1px);
+            }
+
+        /* Alert */
+        .alert {
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            border: 1px solid;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @@keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .alert .icon {
+            font-size: 20px;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+            .alert-content strong {
+                display: block;
+                margin-bottom: 4px;
+                font-size: 15px;
+            }
+
+            .alert-content ul {
+                margin: 8px 0 0 20px;
+                font-size: 13px;
+            }
+
+                .alert-content ul li {
+                    margin: 4px 0;
+                }
+
+        .alert .btn-close {
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0.6;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+        }
+
+            .alert .btn-close:hover {
+                opacity: 1;
+            }
+
+        /* Stats Bar */
+        .stats-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+        }
+
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg-main);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+            .stat-icon.purple {
+                background: rgba(124, 58, 237, 0.15);
+                color: #7C3AED;
+            }
+
+            .stat-icon.green {
+                background: rgba(16, 185, 129, 0.15);
+                color: #10B981;
+            }
+
+            .stat-icon.orange {
+                background: rgba(245, 158, 11, 0.15);
+                color: #F59E0B;
+            }
+
+            .stat-icon.red {
+                background: rgba(239, 68, 68, 0.15);
+                color: #EF4444;
+            }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* Section */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-primary {
+            background: rgba(124, 58, 237, 0.15);
+            color: var(--primary);
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--info);
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        /* License Key */
+        .license-key {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-main);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--primary);
+            border: 1px solid var(--border);
+            display: inline-block;
+        }
+
+        /* DataTables Styling */
+        .dataTables_wrapper {
+            color: var(--text-primary);
+        }
+
+        .dataTables_filter input {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 8px 16px;
+            margin-left: 8px;
+        }
+
+            .dataTables_filter input:focus {
+                outline: none;
+                border-color: var(--primary);
+            }
+
+        .dataTables_filter label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .dataTables_length select {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 6px 32px 6px 12px;
+            margin: 0 8px;
+        }
+
+        .dataTables_length label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Table */
+        table.dataTable {
+            width: 100% !important;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+            table.dataTable thead {
+                background: var(--bg-main);
+            }
+
+                table.dataTable thead th {
+                    padding: 18px 16px;
+                    text-align: left;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: var(--text-secondary);
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+                    background: var(--bg-main);
+                }
+
+            table.dataTable tbody td {
+                padding: 20px 16px;
+                border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            }
+
+            table.dataTable tbody tr {
+                transition: all 0.2s;
+                background: var(--bg-card);
+            }
+
+                table.dataTable tbody tr:hover {
+                    background: var(--bg-hover);
+                }
+
+                table.dataTable tbody tr:not(:last-child) {
+                    border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+                }
+
+        .dataTables_paginate {
+            margin-top: 20px;
+        }
+
+            .dataTables_paginate .paginate_button {
+                background: var(--bg-main);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-primary) !important;
+                padding: 6px 12px;
+                margin: 0 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+                .dataTables_paginate .paginate_button:hover {
+                    background: var(--bg-hover) !important;
+                    border-color: var(--primary) !important;
+                }
+
+                .dataTables_paginate .paginate_button.current {
+                    background: var(--primary) !important;
+                    border-color: var(--primary) !important;
+                    color: white !important;
+                }
+
+        .dataTables_info {
+            color: var(--text-secondary);
+            padding-top: 20px;
+        }
+
+        .dt-buttons {
+            margin-bottom: 20px;
+        }
+
+        .dt-button {
+            background: var(--bg-main) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 8px !important;
+            color: var(--text-primary) !important;
+            padding: 10px 18px !important;
+            margin-right: 8px !important;
+            font-weight: 600 !important;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+            .dt-button:hover {
+                background: var(--primary) !important;
+                border-color: var(--primary) !important;
+                transform: translateY(-1px);
+            }
+
+        /* Action Buttons in Table */
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            margin: 0 4px;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            border: none;
+        }
+
+            .btn-success:hover {
+                background: #0d9668;
+            }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            border: none;
+        }
+
+            .btn-danger:hover {
+                background: #dc2626;
+            }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+            .btn-outline:hover {
+                background: var(--bg-hover);
+                border-color: var(--primary);
+            }
+
+        /* Copy Button */
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            margin-left: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+            .copy-btn:hover {
+                color: var(--primary);
+            }
+
+        /* Responsive */
+        @@media (max-width: 768px) {
+            .stats-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- Header -->
+        <div class="page-header">
+            <div class="page-title">
+                <div class="icon">🔐</div>
+                <div>
+                    <h1>Lisans Yönetimi</h1>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;">
+                        Tüm lisansları görüntüleyin ve yönetin
+                    </p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <a href="/License/Create" class="btn btn-primary">
+                    <span>➕</span>
+                    <span>Yeni Lisans Oluştur</span>
+                </a>
+                <a href="/" class="btn btn-secondary">
+                    <span>🏠</span>
+                    <span>Ana Sayfa</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success">
+                <span class="icon">✅</span>
+                <div class="alert-content">
+                    <strong>Başarılı!</strong>
+                    <div>@TempData["Success"]</div>
+                    @if (TempData["LicenseKey"] != null)
+                    {
+                        <div style="margin-top: 12px;">
+                            <strong style="font-size: 13px;">Lisans Key:</strong>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                <code class="license-key" style="font-size: 14px;">@TempData["LicenseKey"]</code>
+                                <button class="copy-btn" onclick="copyToClipboard('@TempData["LicenseKey"]')" title="Kopyala">
+                                    📋
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <button class="btn-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+        }
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger">
+                <span class="icon">❌</span>
+                <div class="alert-content">
+                    <strong>Hata!</strong>
+                    <div>@TempData["Error"]</div>
+                </div>
+                <button class="btn-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+        }
+
+        <!-- Expiring Soon Warning -->
+        @if (expiring != null && expiring.Any())
+        {
+            <div class="alert alert-warning">
+                <span class="icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Yakında Dolacak Lisanslar (@expiring.Count)</strong>
+                    <ul>
+                        @foreach (var lic in expiring)
+                        {
+                            var daysLeft = (int)(lic.ExpiresAt - DateTime.UtcNow).TotalDays;
+                            <li><strong>@lic.CompanyName</strong> - @daysLeft gün kaldı (Bitiş: @lic.ExpiresAt.ToString("dd/MM/yyyy"))</li>
+                        }
+                    </ul>
+                </div>
+                <button class="btn-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+        }
+
+        <!-- Statistics -->
+        @if (stats != null)
+        {
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="stat-icon purple">📊</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Toplam Lisans</div>
+                        <div class="stat-value">@stats.TotalLicenses</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon green">✅</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Aktif Lisans</div>
+                        <div class="stat-value">@stats.ActiveLicenses</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon orange">⚠️</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Yakında Dolacak</div>
+                        <div class="stat-value">@stats.ExpiringSoonLicenses</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon red">❌</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Süresi Dolmuş</div>
+                        <div class="stat-value">@stats.ExpiredLicenses</div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Licenses Table -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span>📋</span>
+                    <span>Tüm Lisanslar</span>
+                </div>
+            </div>
+
+            <table id="licensesTable" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Şirket</th>
+                        <th>Lisans Key</th>
+                        <th>Tip</th>
+                        <th>Durum</th>
+                        <th>Oluşturma</th>
+                        <th>Bitiş</th>
+                        <th>Kalan Gün</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var license in Model)
+                    {
+                        var now = DateTime.UtcNow;
+                        var daysRemaining = (int)(license.ExpiresAt - now).TotalDays;
+                        var isExpired = daysRemaining < 0;
+                        var isExpiringSoon = daysRemaining <= 7 && daysRemaining >= 0;
+                        var statusClass = isExpired ? "danger" : (license.IsActive ? "success" : "danger");
+                        var statusText = isExpired ? "Dolmuş" : (license.IsActive ? "Aktif" : "Pasif");
+                        var statusIcon = isExpired ? "❌" : (license.IsActive ? "✅" : "🚫");
+
+                        <tr>
+                            <td>
+                                <div style="font-weight: 600;">@license.CompanyName</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">@license.ContactEmail</div>
+                            </td>
+                            <td>
+                                <code class="license-key">@license.LicenseKey</code>
+                                <button class="copy-btn" onclick="copyToClipboard('@license.LicenseKey')" title="Kopyala">
+                                    📋
+                                </button>
+                            </td>
+                            <td>
+                                <span class="badge badge-info">@license.Type.ToString()</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-@statusClass">@statusIcon @statusText</span>
+                            </td>
+                            <td>@license.CreatedAt.ToString("dd/MM/yyyy")</td>
+                            <td>@license.ExpiresAt.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @if (isExpired)
+                                {
+                                    <span style="color: var(--danger);">@Math.Abs(daysRemaining) gün geçti</span>
+                                }
+                                else
+                                {
+                                    <span style="color: @(isExpiringSoon ? "var(--warning)" : "var(--success)");">
+                                        @daysRemaining gün
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                @if (license.IsActive)
+                                {
+                                    <form method="post" action="/License/Extend" style="display: inline;">
+                                        <input type="hidden" name="licenseKey" value="@license.LicenseKey" />
+                                        <input type="hidden" name="days" value="30" />
+                                        <button type="submit" class="btn btn-sm btn-success" title="30 gün uzat">
+                                            ➕ 30
+                                        </button>
+                                    </form>
+
+                                    <form method="post" action="/License/Revoke" style="display: inline;"
+                                          onsubmit="return confirm('Bu lisansı iptal etmek istediğinizden emin misiniz?');">
+                                        <input type="hidden" name="licenseKey" value="@license.LicenseKey" />
+                                        <button type="submit" class="btn btn-sm btn-danger" title="İptal et">
+                                            🚫
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#licensesTable').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        extend: 'copy',
+                        text: '📋 Kopyala'
+                    },
+                    {
+                        extend: 'excel',
+                        text: '📊 Excel'
+                    },
+                    {
+                        extend: 'print',
+                        text: '🖨️ Yazdır'
+                    }
+                ],
+                language: {
+                    search: "Ara:",
+                    lengthMenu: "Göster _MENU_ kayıt",
+                    info: "_TOTAL_ kayıttan _START_ - _END_ arası gösteriliyor",
+                    infoEmpty: "Kayıt yok",
+                    infoFiltered: "(_MAX_ kayıt içinden filtrelendi)",
+                    zeroRecords: "Eşleşen kayıt bulunamadı",
+                    paginate: {
+                        first: "İlk",
+                        last: "Son",
+                        next: "Sonraki",
+                        previous: "Önceki"
+                    }
+                },
+                order: [[4, 'desc']], // Oluşturma tarihine göre sırala
+                pageLength: 25,
+                responsive: true
+            });
+        });
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function () {
+                // Başarılı kopyalama bildirimi
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 10px;
+                    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+                    z-index: 9999;
+                    animation: slideIn 0.3s ease-out;
+                `;
+                notification.innerHTML = '✅ Lisans key kopyalandı!';
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => notification.remove(), 300);
+                }, 2000);
+            }).catch(function (err) {
+                alert('Kopyalama başarısız: ' + err);
+            });
+        }
+
+        // Animasyonlar
+        const style = document.createElement('style');
+        style.textContent = `
+            @@keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(100px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            @@keyframes slideOut {
+                from {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(100px);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

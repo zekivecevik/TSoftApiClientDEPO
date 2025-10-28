@@ -1,0 +1,477 @@
+@model TSoftApiClient.Models.CreateLicenseRequest
+@{
+    ViewData["Title"] = "Yeni Lisans Oluştur";
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - T-Soft ERP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #7C3AED;
+            --primary-hover: #6D28D9;
+            --bg-main: #0F0F0F;
+            --bg-card: #1A1A1A;
+            --bg-hover: #252525;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A0;
+            --border: #2A2A2A;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --info: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #1e1b4b 0%, #0F0F0F 100%);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Card */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            padding: 32px;
+            text-align: center;
+        }
+
+            .card-header h1 {
+                font-size: 28px;
+                font-weight: 700;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+            }
+
+        .card-body {
+            padding: 40px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            border: 1px solid;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 28px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.3px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 14px 18px;
+            background: var(--bg-main);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+
+            input:focus,
+            select:focus,
+            textarea:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+            }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23A0A0A0' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        small {
+            display: block;
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--info);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 28px;
+        }
+
+            .info-box strong {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: var(--info);
+                margin-bottom: 8px;
+                font-size: 15px;
+            }
+
+            .info-box p {
+                color: var(--text-secondary);
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+        /* Button Group */
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 32px;
+        }
+
+        .btn {
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            color: white;
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+            grid-column: 1 / -1;
+        }
+
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 15px 40px rgba(124, 58, 237, 0.4);
+            }
+
+        .btn-secondary {
+            background: var(--bg-main);
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+        }
+
+            .btn-secondary:hover {
+                background: var(--bg-hover);
+                border-color: var(--primary);
+            }
+
+        /* Pricing Table */
+        .pricing-table {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+
+            .pricing-table h3 {
+                font-size: 18px;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .pricing-table table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            .pricing-table th,
+            .pricing-table td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .pricing-table th {
+                color: var(--text-secondary);
+                font-size: 12px;
+                font-weight: 600;
+                text-transform: uppercase;
+            }
+
+            .pricing-table td {
+                font-size: 14px;
+            }
+
+            .pricing-table tr:last-child td {
+                border-bottom: none;
+            }
+
+        .badge {
+            display: inline-flex;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-secondary {
+            background: rgba(160, 160, 160, 0.15);
+            color: var(--text-secondary);
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--info);
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        /* Responsive */
+        @@media (max-width: 640px) {
+            .card-body {
+                padding: 24px;
+            }
+
+            .card-header {
+                padding: 24px;
+            }
+
+                .card-header h1 {
+                    font-size: 22px;
+                }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-primary {
+                grid-column: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h1>
+                    <span>➕</span>
+                    <span>Yeni Lisans Oluştur</span>
+                </h1>
+            </div>
+
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(ViewBag.Error))
+                {
+                    <div class="alert alert-danger">
+                        <span style="font-size: 20px;">❌</span>
+                        <div>
+                            <strong>Hata!</strong>
+                            <div>@ViewBag.Error</div>
+                        </div>
+                    </div>
+                }
+
+                <form method="post" action="/License/Create">
+                    <div class="form-group">
+                        <label for="companyName">
+                            🏢 Şirket Adı *
+                        </label>
+                        <input type="text"
+                               id="companyName"
+                               name="companyName"
+                               placeholder="Acme Corporation"
+                               required />
+                        <small>Lisansı kullanacak şirketin adı</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contactEmail">
+                            ✉️ İletişim E-posta *
+                        </label>
+                        <input type="email"
+                               id="contactEmail"
+                               name="contactEmail"
+                               placeholder="admin@acme.com"
+                               required />
+                        <small>Lisans bildirimleri bu e-postaya gönderilecek</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="type">
+                            ⏱️ Lisans Tipi *
+                        </label>
+                        <select id="type" name="type" required>
+                            <option value="0">Trial - 7 Gün (Deneme)</option>
+                            <option value="1" selected>Monthly - 30 Gün (Aylık)</option>
+                            <option value="2">Quarterly - 90 Gün (3 Aylık)</option>
+                            <option value="3">Yearly - 365 Gün (Yıllık)</option>
+                            <option value="4">Lifetime - Sınırsız (Ömür Boyu)</option>
+                        </select>
+                        <small>Lisansın geçerlilik süresi</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maxUsers">
+                            👥 Maksimum Kullanıcı Sayısı *
+                        </label>
+                        <input type="number"
+                               id="maxUsers"
+                               name="maxUsers"
+                               value="5"
+                               min="1"
+                               max="1000"
+                               required />
+                        <small>Aynı anda sisteme giriş yapabilecek kullanıcı sayısı</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">
+                            📝 Notlar (Opsiyonel)
+                        </label>
+                        <textarea id="notes"
+                                  name="notes"
+                                  placeholder="Lisans hakkında ekstra bilgiler..."></textarea>
+                        <small>İç kullanım için notlar ekleyebilirsiniz</small>
+                    </div>
+
+                    <div class="info-box">
+                        <strong>
+                            <span>ℹ️</span>
+                            <span>Bilgi</span>
+                        </strong>
+                        <p>
+                            Lisans oluşturulduktan sonra size benzersiz bir lisans key'i verilecektir.
+                            Bu key'i müşteriniz ile paylaşarak lisansı aktive etmelerini sağlayabilirsiniz.
+                        </p>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">
+                            <span>✅</span>
+                            <span>Lisans Oluştur</span>
+                        </button>
+                        <a href="/License/Manage" class="btn btn-secondary">
+                            <span>←</span>
+                            <span>Geri Dön</span>
+                        </a>
+                    </div>
+                </form>
+
+                <!-- Pricing Information -->
+                <div class="pricing-table">
+                    <h3>
+                        <span>📊</span>
+                        <span>Lisans Tipleri ve Kullanım Önerileri</span>
+                    </h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tip</th>
+                                <th>Süre</th>
+                                <th>Önerilen Kullanım</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge badge-secondary">Trial</span></td>
+                                <td>7 Gün</td>
+                                <td>Deneme amaçlı, potansiyel müşteriler</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-info">Monthly</span></td>
+                                <td>30 Gün</td>
+                                <td>Küçük işletmeler, kısa vadeli projeler</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-info">Quarterly</span></td>
+                                <td>90 Gün</td>
+                                <td>Orta ölçekli şirketler</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-success">Yearly</span></td>
+                                <td>365 Gün</td>
+                                <td>Kurumsal müşteriler (en popüler)</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-warning">Lifetime</span></td>
+                                <td>Sınırsız</td>
+                                <td>Premium müşteriler, özel anlaşmalar</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
