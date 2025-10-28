@@ -22,7 +22,7 @@ namespace TSoftApiClient.Controllers
         }
 
         /// <summary>
-        /// Lisans aktivasyon sayfası (giriş yapmadan erişilebilir)
+        /// Lisans sayfası - Admin için yönetim paneli, User için aktivasyon
         /// </summary>
         [Route("/License")]
         [AllowAnonymous]
@@ -39,6 +39,14 @@ namespace TSoftApiClient.Controllers
 
             ViewBag.Message = message;
             ViewBag.MachineId = LicenseService.GenerateMachineId();
+
+            // Admin ise tüm lisansları ve istatistikleri ekle
+            if (User.IsInRole("Admin"))
+            {
+                ViewBag.AllLicenses = _licenseService.GetAllLicenses();
+                ViewBag.Statistics = _licenseService.GetStatistics();
+                ViewBag.ExpiringSoon = _licenseService.GetExpiringSoonLicenses();
+            }
 
             return View("~/Views/License/Index.cshtml");
         }
@@ -79,23 +87,6 @@ namespace TSoftApiClient.Controllers
         }
 
         /// <summary>
-        /// Lisans yönetimi sayfası (Admin only)
-        /// </summary>
-        [Route("/License/Manage")]
-        [Authorize(Roles = "Admin")]
-        public IActionResult Manage()
-        {
-            var licenses = _licenseService.GetAllLicenses();
-            var statistics = _licenseService.GetStatistics();
-            var expiringSoon = _licenseService.GetExpiringSoonLicenses();
-
-            ViewBag.Statistics = statistics;
-            ViewBag.ExpiringSoon = expiringSoon;
-
-            return View("~/Views/License/Manage.cshtml", licenses);
-        }
-
-        /// <summary>
         /// Yeni lisans oluşturma sayfası (Admin only)
         /// </summary>
         [Route("/License/Create")]
@@ -126,7 +117,8 @@ namespace TSoftApiClient.Controllers
                 if (success)
                 {
                     TempData["Success"] = $"Lisans oluşturuldu: {license!.LicenseKey}";
-                    return RedirectToAction("Manage");
+                    TempData["LicenseKey"] = license.LicenseKey;
+                    return RedirectToAction("Index");
                 }
 
                 ViewBag.Error = message;
@@ -159,7 +151,7 @@ namespace TSoftApiClient.Controllers
                 TempData["Error"] = message;
             }
 
-            return RedirectToAction("Manage");
+            return RedirectToAction("Index");
         }
 
         /// <summary>
@@ -181,7 +173,7 @@ namespace TSoftApiClient.Controllers
                 TempData["Error"] = "Lisans bulunamadı";
             }
 
-            return RedirectToAction("Manage");
+            return RedirectToAction("Index");
         }
     }
 }

@@ -1,10 +1,25 @@
 @using TSoftApiClient.Models
 @{
-    ViewData["Title"] = "Lisans Aktivasyonu";
+    ViewData["Title"] = "Lisans Yönetimi";
     var currentLicense = ViewBag.CurrentLicense as License;
     var validation = ViewBag.Validation as LicenseValidationResult;
     var message = ViewBag.Message as string;
     var machineId = ViewBag.MachineId as string;
+
+    // Admin için ek veriler
+    var allLicenses = ViewBag.AllLicenses as List<License>;
+    var stats = ViewBag.Statistics as LicenseStatistics;
+    var expiring = ViewBag.ExpiringSoon as List<License>;
+    var isAdmin = User?.IsInRole("Admin") == true;
+}
+
+@section Styles {
+    @if (isAdmin)
+    {
+        <!-- DataTables CSS -->
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+    }
 }
 
 <style>
@@ -31,22 +46,51 @@
 
     .license-page-wrapper {
         min-height: calc(100vh - 70px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
         padding: 40px 20px;
         background: linear-gradient(135deg, #1e1b4b 0%, #0F0F0F 100%);
     }
 
-    .container {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 20px;
-        padding: 48px;
-        max-width: 600px;
-        width: 100%;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    .page-container {
+        max-width: 1800px;
+        margin: 0 auto;
     }
+
+    .container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Header */
+    .page-header {
+        margin-bottom: 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .page-title {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+        .page-title h1 {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .page-title .icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
 
     .header {
         text-align: center;
@@ -80,6 +124,46 @@
         color: var(--text-secondary);
         font-size: 14px;
         font-weight: 500;
+    }
+
+    /* Card */
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        margin-bottom: 24px;
+    }
+
+    .card-body {
+        padding: 40px;
+    }
+
+    /* Section */
+    .section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .section-header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
     /* Alert Styles */
@@ -118,7 +202,7 @@
         color: var(--warning);
     }
 
-    .alert-error {
+    .alert-error, .alert-danger {
         background: rgba(239, 68, 68, 0.1);
         border-color: var(--danger);
         color: var(--danger);
@@ -143,6 +227,37 @@
             font-size: 14px;
             margin: 4px 0;
             opacity: 0.9;
+        }
+
+        .alert-content strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 15px;
+        }
+
+        .alert-content ul {
+            margin: 8px 0 0 20px;
+            font-size: 13px;
+        }
+
+            .alert-content ul li {
+                margin: 4px 0;
+            }
+
+    .alert .btn-close {
+        background: none;
+        border: none;
+        color: inherit;
+        font-size: 20px;
+        cursor: pointer;
+        opacity: 0.6;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+    }
+
+        .alert .btn-close:hover {
+            opacity: 1;
         }
 
     /* License Info Card */
@@ -202,6 +317,17 @@
         border-radius: 8px;
         font-size: 12px;
         font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-primary {
+        background: rgba(124, 58, 237, 0.15);
+        color: var(--primary);
+    }
+
+    .badge-info {
+        background: rgba(59, 130, 246, 0.15);
+        color: var(--info);
     }
 
     .badge-success {
@@ -212,6 +338,81 @@
     .badge-warning {
         background: rgba(245, 158, 11, 0.15);
         color: var(--warning);
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 24px;
+    }
+
+    .stat-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: var(--bg-main);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+    }
+
+        .stat-icon.purple {
+            background: rgba(124, 58, 237, 0.15);
+            color: #7C3AED;
+        }
+
+        .stat-icon.green {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10B981;
+        }
+
+        .stat-icon.orange {
+            background: rgba(245, 158, 11, 0.15);
+            color: #F59E0B;
+        }
+
+        .stat-icon.red {
+            background: rgba(239, 68, 68, 0.15);
+            color: #EF4444;
+        }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
     }
 
     /* Form */
@@ -274,31 +475,30 @@
 
     /* Button */
     .btn {
-        width: 100%;
-        padding: 16px;
-        background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
-        color: white;
-        border: none;
+        padding: 16px 24px;
         border-radius: 10px;
         font-size: 16px;
         font-weight: 600;
         cursor: pointer;
+        border: none;
         transition: all 0.3s;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 10px;
-        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
         text-decoration: none;
     }
 
-        .btn:hover {
+    .btn-primary {
+        background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+        color: white;
+        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+        width: 100%;
+    }
+
+        .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 15px 40px rgba(124, 58, 237, 0.4);
-        }
-
-        .btn:active {
-            transform: translateY(0);
         }
 
     .btn-secondary {
@@ -306,12 +506,52 @@
         border: 2px solid var(--border);
         box-shadow: none;
         margin-top: 12px;
+        width: 100%;
+        color: var(--text-primary);
     }
 
         .btn-secondary:hover {
             background: var(--bg-hover);
             border-color: var(--primary);
             box-shadow: 0 10px 30px rgba(124, 58, 237, 0.2);
+        }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+        border-radius: 6px;
+        margin: 0 4px;
+    }
+
+    .btn-success {
+        background: var(--success);
+        color: white;
+        border: none;
+    }
+
+        .btn-success:hover {
+            background: #0d9668;
+        }
+
+    .btn-danger {
+        background: var(--danger);
+        color: white;
+        border: none;
+    }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+    }
+
+        .btn-outline:hover {
+            background: var(--bg-hover);
+            border-color: var(--primary);
         }
 
     /* Link */
@@ -340,14 +580,160 @@
                 text-decoration: underline;
             }
 
-    /* Responsive */
-    @@media (max-width: 640px) {
-        .container {
-            padding: 32px 24px;
+    /* Copy Button */
+    .copy-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 4px;
+        margin-left: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+        .copy-btn:hover {
+            color: var(--primary);
         }
 
-        h1 {
-            font-size: 24px;
+    /* DataTables Styling */
+    .dataTables_wrapper {
+        color: var(--text-primary);
+    }
+
+    .dataTables_filter input {
+        background: var(--bg-main);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        padding: 8px 16px;
+        margin-left: 8px;
+    }
+
+        .dataTables_filter input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+    .dataTables_filter label {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .dataTables_length select {
+        background: var(--bg-main);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        padding: 6px 32px 6px 12px;
+        margin: 0 8px;
+    }
+
+    .dataTables_length label {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    /* Table */
+    table.dataTable {
+        width: 100% !important;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: transparent;
+        color: var(--text-primary);
+    }
+
+        table.dataTable thead {
+            background: var(--bg-main);
+        }
+
+            table.dataTable thead th {
+                padding: 18px 16px;
+                text-align: left;
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+                background: var(--bg-main);
+            }
+
+        table.dataTable tbody td {
+            padding: 20px 16px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        table.dataTable tbody tr {
+            transition: all 0.2s;
+            background: var(--bg-card);
+        }
+
+            table.dataTable tbody tr:hover {
+                background: var(--bg-hover);
+            }
+
+            table.dataTable tbody tr:not(:last-child) {
+                border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+            }
+
+    .dataTables_paginate {
+        margin-top: 20px;
+    }
+
+        .dataTables_paginate .paginate_button {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary) !important;
+            padding: 6px 12px;
+            margin: 0 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+            .dataTables_paginate .paginate_button:hover {
+                background: var(--bg-hover) !important;
+                border-color: var(--primary) !important;
+            }
+
+            .dataTables_paginate .paginate_button.current {
+                background: var(--primary) !important;
+                border-color: var(--primary) !important;
+                color: white !important;
+            }
+
+    .dataTables_info {
+        color: var(--text-secondary);
+        padding-top: 20px;
+    }
+
+    .dt-buttons {
+        margin-bottom: 20px;
+    }
+
+    .dt-button {
+        background: var(--bg-main) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 8px !important;
+        color: var(--text-primary) !important;
+        padding: 10px 18px !important;
+        margin-right: 8px !important;
+        font-weight: 600 !important;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        .dt-button:hover {
+            background: var(--primary) !important;
+            border-color: var(--primary) !important;
+            transform: translateY(-1px);
+        }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .card-body {
+            padding: 24px;
         }
 
         .header-icon {
@@ -355,190 +741,603 @@
             height: 64px;
             font-size: 32px;
         }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        .stats-bar {
+            grid-template-columns: 1fr;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
     }
 </style>
 
 <div class="license-page-wrapper">
-    <div class="container">
-        <div class="header">
-            <div class="header-icon">🔑</div>
-            <h1>Lisans Aktivasyonu</h1>
-            <p class="subtitle">T-Soft ERP Lisans Yönetim Sistemi</p>
-        </div>
-
-        @if (!string.IsNullOrEmpty(message))
-        {
-            <div class="alert alert-error">
-                <div class="alert-icon">❌</div>
-                <div class="alert-content">
-                    <p>@message</p>
+    @if (isAdmin)
+    {
+        <!-- ADMIN VIEW - Management Panel -->
+        <div class="page-container">
+            <!-- Header -->
+            <div class="page-header">
+                <div class="page-title">
+                    <div class="icon">🔐</div>
+                    <div>
+                        <h1>Lisans Yönetimi</h1>
+                        <p style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;">
+                            Tüm lisansları görüntüleyin ve yönetin
+                        </p>
+                    </div>
                 </div>
-            </div>
-        }
-
-        @if (TempData["Success"] != null)
-        {
-            <div class="alert alert-success">
-                <div class="alert-icon">✅</div>
-                <div class="alert-content">
-                    <h3>Başarılı!</h3>
-                    <p>@TempData["Success"]</p>
-                </div>
-            </div>
-        }
-
-        @if (TempData["Error"] != null)
-        {
-            <div class="alert alert-error">
-                <div class="alert-icon">❌</div>
-                <div class="alert-content">
-                    <h3>Hata</h3>
-                    <p>@TempData["Error"]</p>
-                </div>
-            </div>
-        }
-
-        @if (currentLicense != null && validation?.IsValid == true)
-        {
-            <!-- Aktif Lisans Var -->
-            <div class="alert alert-success">
-                <div class="alert-icon">✅</div>
-                <div class="alert-content">
-                    <h3>Aktif Lisans Mevcut</h3>
-                    <p>Lisansınız başarıyla aktive edilmiş ve çalışıyor.</p>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <a href="/License/Create" class="btn btn-primary" style="width: auto;">
+                        <span>➕</span>
+                        <span>Yeni Lisans Oluştur</span>
+                    </a>
+                    <a href="/" class="btn btn-secondary" style="width: auto; margin-top: 0;">
+                        <span>🏠</span>
+                        <span>Ana Sayfa</span>
+                    </a>
                 </div>
             </div>
 
-            <div class="license-info">
-                <div class="info-row">
-                    <span class="info-label">Şirket</span>
-                    <span class="info-value">@currentLicense.CompanyName</span>
-                </div>
-
-                <div class="info-row">
-                    <span class="info-label">E-posta</span>
-                    <span class="info-value">@currentLicense.ContactEmail</span>
-                </div>
-
-                <div class="info-row">
-                    <span class="info-label">Lisans Key</span>
-                    <span class="info-value">
-                        <span class="license-key">@currentLicense.LicenseKey</span>
-                    </span>
-                </div>
-
-                <div class="info-row">
-                    <span class="info-label">Tip</span>
-                    <span class="info-value">
-                        @currentLicense.Type.ToString()
-                        <span class="badge badge-success">✓ Aktif</span>
-                    </span>
-                </div>
-
-                <div class="info-row">
-                    <span class="info-label">Bitiş Tarihi</span>
-                    <span class="info-value">@currentLicense.ExpiresAt.ToString("dd/MM/yyyy HH:mm")</span>
-                </div>
-
-                <div class="info-row">
-                    <span class="info-label">Kalan Süre</span>
-                    <span class="info-value">
-                        @validation.DaysRemaining gün
-                        @if (validation.IsExpiringSoon)
-                        {
-                            <span class="badge badge-warning">⚠️ Yakında Dolacak</span>
-                        }
-                    </span>
-                </div>
-
-                <div class="info-row">
-                    <span class="info-label">Maksimum Kullanıcı</span>
-                    <span class="info-value">@currentLicense.MaxUsers</span>
-                </div>
-            </div>
-
-            <a href="/" class="btn">
-                <span>🏠</span>
-                <span>Ana Sayfaya Dön</span>
-            </a>
-
-            @if (User.IsInRole("Admin"))
+            <!-- Alerts -->
+            @if (TempData["Success"] != null)
             {
-                <a href="/License/Manage" class="btn btn-secondary">
-                    <span>⚙️</span>
-                    <span>Lisans Yönetimi</span>
-                </a>
+                <div class="alert alert-success">
+                    <span class="alert-icon">✅</span>
+                    <div class="alert-content">
+                        <strong>Başarılı!</strong>
+                        <div>@TempData["Success"]</div>
+                        @if (TempData["LicenseKey"] != null)
+                        {
+                            <div style="margin-top: 12px;">
+                                <strong style="font-size: 13px;">Lisans Key:</strong>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                    <code class="license-key" style="font-size: 14px;">@TempData["LicenseKey"]</code>
+                                    <button class="copy-btn" onclick="copyToClipboard('@TempData["LicenseKey"]')" title="Kopyala">
+                                        📋
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <button class="btn-close" onclick="this.parentElement.remove()">×</button>
+                </div>
             }
-        }
-        else
-        {
-            <!-- Lisans Aktivasyon Formu -->
-            @if (validation != null && validation.IsExpiringSoon)
+
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger">
+                    <span class="alert-icon">❌</span>
+                    <div class="alert-content">
+                        <strong>Hata!</strong>
+                        <div>@TempData["Error"]</div>
+                    </div>
+                    <button class="btn-close" onclick="this.parentElement.remove()">×</button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(message))
+            {
+                <div class="alert alert-error">
+                    <div class="alert-icon">❌</div>
+                    <div class="alert-content">
+                        <p>@message</p>
+                    </div>
+                </div>
+            }
+
+            <!-- Expiring Soon Warning -->
+            @if (expiring != null && expiring.Any())
             {
                 <div class="alert alert-warning">
-                    <div class="alert-icon">⚠️</div>
+                    <span class="alert-icon">⚠️</span>
                     <div class="alert-content">
-                        <h3>Süre Dolum Uyarısı</h3>
-                        <p>Lisansınızın süresi @validation.DaysRemaining gün içinde dolacak!</p>
+                        <strong>Yakında Dolacak Lisanslar (@expiring.Count)</strong>
+                        <ul>
+                            @foreach (var lic in expiring)
+                            {
+                                var daysLeft = (int)(lic.ExpiresAt - DateTime.UtcNow).TotalDays;
+                                <li><strong>@lic.CompanyName</strong> - @daysLeft gün kaldı (Bitiş: @lic.ExpiresAt.ToString("dd/MM/yyyy"))</li>
+                            }
+                        </ul>
+                    </div>
+                    <button class="btn-close" onclick="this.parentElement.remove()">×</button>
+                </div>
+            }
+
+            <!-- Current License Info -->
+            @if (currentLicense != null && validation?.IsValid == true)
+            {
+                <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>🔑</span>
+                            <span>Aktif Lisans Bilgileri</span>
+                        </div>
+                    </div>
+
+                    <div class="license-info">
+                        <div class="info-row">
+                            <span class="info-label">Şirket</span>
+                            <span class="info-value">@currentLicense.CompanyName</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">E-posta</span>
+                            <span class="info-value">@currentLicense.ContactEmail</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Lisans Key</span>
+                            <span class="info-value">
+                                <span class="license-key">@currentLicense.LicenseKey</span>
+                            </span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Tip</span>
+                            <span class="info-value">
+                                @currentLicense.Type.ToString()
+                                <span class="badge badge-success">✓ Aktif</span>
+                            </span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Bitiş Tarihi</span>
+                            <span class="info-value">@currentLicense.ExpiresAt.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Kalan Süre</span>
+                            <span class="info-value">
+                                @validation.DaysRemaining gün
+                                @if (validation.IsExpiringSoon)
+                                {
+                                    <span class="badge badge-warning">⚠️ Yakında Dolacak</span>
+                                }
+                            </span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Maksimum Kullanıcı</span>
+                            <span class="info-value">@currentLicense.MaxUsers</span>
+                        </div>
                     </div>
                 </div>
             }
 
-            <form method="post" action="/License/Activate">
-                <div class="form-group">
-                    <label for="licenseKey">
-                        🔑 Lisans Key'i *
-                    </label>
-                    <input type="text"
-                           id="licenseKey"
-                           name="licenseKey"
-                           placeholder="TSOFT-XXXX-XXXX-XXXX-XXXX"
-                           required
-                           pattern="[A-Z0-9\-]+"
-                           style="text-transform: uppercase;" />
-                </div>
-
-                <div class="form-group">
-                    <label for="companyName">
-                        🏢 Şirket Adı *
-                    </label>
-                    <input type="text"
-                           id="companyName"
-                           name="companyName"
-                           placeholder="Şirket adınızı girin"
-                           required />
-                </div>
-
-                <div class="form-group">
-                    <label for="contactEmail">
-                        ✉️ İletişim E-posta *
-                    </label>
-                    <input type="email"
-                           id="contactEmail"
-                           name="contactEmail"
-                           placeholder="ornek@sirket.com"
-                           required />
-                </div>
-
-                <div class="form-group">
-                    <label>🖥️ Makine ID (Otomatik)</label>
-                    <div class="machine-id-box">
-                        <span class="icon">🔒</span>
-                        <span>@machineId</span>
+            <!-- Statistics -->
+            @if (stats != null)
+            {
+                <div class="stats-bar">
+                    <div class="stat-card">
+                        <div class="stat-icon purple">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Toplam Lisans</div>
+                            <div class="stat-value">@stats.TotalLicenses</div>
+                        </div>
                     </div>
-                    <input type="hidden" name="machineId" value="@machineId" />
+
+                    <div class="stat-card">
+                        <div class="stat-icon green">✅</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Aktif Lisans</div>
+                            <div class="stat-value">@stats.ActiveLicenses</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon orange">⚠️</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Yakında Dolacak</div>
+                            <div class="stat-value">@stats.ExpiringSoonLicenses</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon red">❌</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Süresi Dolmuş</div>
+                            <div class="stat-value">@stats.ExpiredLicenses</div>
+                        </div>
+                    </div>
                 </div>
+            }
 
-                <button type="submit" class="btn">
-                    <span>🔓</span>
-                    <span>Lisansı Aktive Et</span>
-                </button>
-            </form>
+            <!-- Licenses Table -->
+            @if (allLicenses != null)
+            {
+                <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>📋</span>
+                            <span>Tüm Lisanslar</span>
+                        </div>
+                    </div>
 
-            <div class="footer-link">
-                <p>Lisans key'iniz yok mu?</p>
-                <a href="/Account/Login">Admin kullanıcısı ile giriş yapın →</a>
+                    <table id="licensesTable" class="display" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Şirket</th>
+                                <th>Lisans Key</th>
+                                <th>Tip</th>
+                                <th>Durum</th>
+                                <th>Oluşturma</th>
+                                <th>Bitiş</th>
+                                <th>Kalan Gün</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var license in allLicenses)
+                            {
+                                var now = DateTime.UtcNow;
+                                var daysRemaining = (int)(license.ExpiresAt - now).TotalDays;
+                                var isExpired = daysRemaining < 0;
+                                var isExpiringSoon = daysRemaining <= 7 && daysRemaining >= 0;
+                                var statusClass = isExpired ? "danger" : (license.IsActive ? "success" : "danger");
+                                var statusText = isExpired ? "Dolmuş" : (license.IsActive ? "Aktif" : "Pasif");
+                                var statusIcon = isExpired ? "❌" : (license.IsActive ? "✅" : "🚫");
+
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600;">@license.CompanyName</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">@license.ContactEmail</div>
+                                    </td>
+                                    <td>
+                                        <code class="license-key">@license.LicenseKey</code>
+                                        <button class="copy-btn" onclick="copyToClipboard('@license.LicenseKey')" title="Kopyala">
+                                            📋
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">@license.Type.ToString()</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-@statusClass">@statusIcon @statusText</span>
+                                    </td>
+                                    <td>@license.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                    <td>@license.ExpiresAt.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        @if (isExpired)
+                                        {
+                                            <span style="color: var(--danger);">@Math.Abs(daysRemaining) gün geçti</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: @(isExpiringSoon ? "var(--warning)" : "var(--success)");">
+                                                @daysRemaining gün
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (license.IsActive)
+                                        {
+                                            <form method="post" action="/License/Extend" style="display: inline;">
+                                                <input type="hidden" name="licenseKey" value="@license.LicenseKey" />
+                                                <input type="hidden" name="days" value="30" />
+                                                <button type="submit" class="btn btn-sm btn-success" title="30 gün uzat">
+                                                    ➕ 30
+                                                </button>
+                                            </form>
+
+                                            <form method="post" action="/License/Revoke" style="display: inline;"
+                                                  onsubmit="return confirm('Bu lisansı iptal etmek istediğinizden emin misiniz?');">
+                                                <input type="hidden" name="licenseKey" value="@license.LicenseKey" />
+                                                <button type="submit" class="btn btn-sm btn-danger" title="İptal et">
+                                                    🚫
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <!-- USER VIEW - Activation Page -->
+        <div class="container">
+            <div class="card">
+                <div class="card-body">
+                    <div class="header">
+                        <div class="header-icon">🔑</div>
+                        <h1>Lisans Aktivasyonu</h1>
+                        <p class="subtitle">T-Soft ERP Lisans Yönetim Sistemi</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(message))
+                    {
+                        <div class="alert alert-error">
+                            <div class="alert-icon">❌</div>
+                            <div class="alert-content">
+                                <p>@message</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success">
+                            <div class="alert-icon">✅</div>
+                            <div class="alert-content">
+                                <h3>Başarılı!</h3>
+                                <p>@TempData["Success"]</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-error">
+                            <div class="alert-icon">❌</div>
+                            <div class="alert-content">
+                                <h3>Hata</h3>
+                                <p>@TempData["Error"]</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (currentLicense != null && validation?.IsValid == true)
+                    {
+                        <!-- Aktif Lisans Var -->
+                        <div class="alert alert-success">
+                            <div class="alert-icon">✅</div>
+                            <div class="alert-content">
+                                <h3>Aktif Lisans Mevcut</h3>
+                                <p>Lisansınız başarıyla aktive edilmiş ve çalışıyor.</p>
+                            </div>
+                        </div>
+
+                        <div class="license-info">
+                            <div class="info-row">
+                                <span class="info-label">Şirket</span>
+                                <span class="info-value">@currentLicense.CompanyName</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">E-posta</span>
+                                <span class="info-value">@currentLicense.ContactEmail</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Lisans Key</span>
+                                <span class="info-value">
+                                    <span class="license-key">@currentLicense.LicenseKey</span>
+                                </span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Tip</span>
+                                <span class="info-value">
+                                    @currentLicense.Type.ToString()
+                                    <span class="badge badge-success">✓ Aktif</span>
+                                </span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Bitiş Tarihi</span>
+                                <span class="info-value">@currentLicense.ExpiresAt.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Kalan Süre</span>
+                                <span class="info-value">
+                                    @validation.DaysRemaining gün
+                                    @if (validation.IsExpiringSoon)
+                                    {
+                                        <span class="badge badge-warning">⚠️ Yakında Dolacak</span>
+                                    }
+                                </span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Maksimum Kullanıcı</span>
+                                <span class="info-value">@currentLicense.MaxUsers</span>
+                            </div>
+                        </div>
+
+                        <a href="/" class="btn btn-primary">
+                            <span>🏠</span>
+                            <span>Ana Sayfaya Dön</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <!-- Lisans Aktivasyon Formu -->
+                        @if (validation != null && validation.IsExpiringSoon)
+                        {
+                            <div class="alert alert-warning">
+                                <div class="alert-icon">⚠️</div>
+                                <div class="alert-content">
+                                    <h3>Süre Dolum Uyarısı</h3>
+                                    <p>Lisansınızın süresi @validation.DaysRemaining gün içinde dolacak!</p>
+                                </div>
+                            </div>
+                        }
+
+                        <form method="post" action="/License/Activate">
+                            <div class="form-group">
+                                <label for="licenseKey">
+                                    🔑 Lisans Key'i *
+                                </label>
+                                <input type="text"
+                                       id="licenseKey"
+                                       name="licenseKey"
+                                       placeholder="TSOFT-XXXX-XXXX-XXXX-XXXX"
+                                       required
+                                       pattern="[A-Z0-9\-]+"
+                                       style="text-transform: uppercase;" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="companyName">
+                                    🏢 Şirket Adı *
+                                </label>
+                                <input type="text"
+                                       id="companyName"
+                                       name="companyName"
+                                       placeholder="Şirket adınızı girin"
+                                       required />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="contactEmail">
+                                    ✉️ İletişim E-posta *
+                                </label>
+                                <input type="email"
+                                       id="contactEmail"
+                                       name="contactEmail"
+                                       placeholder="ornek@sirket.com"
+                                       required />
+                            </div>
+
+                            <div class="form-group">
+                                <label>🖥️ Makine ID (Otomatik)</label>
+                                <div class="machine-id-box">
+                                    <span class="icon">🔒</span>
+                                    <span>@machineId</span>
+                                </div>
+                                <input type="hidden" name="machineId" value="@machineId" />
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <span>🔓</span>
+                                <span>Lisansı Aktive Et</span>
+                            </button>
+                        </form>
+
+                        <div class="footer-link">
+                            <p>Lisans key'iniz yok mu?</p>
+                            <a href="/Account/Login">Admin kullanıcısı ile giriş yapın →</a>
+                        </div>
+                    }
+                </div>
             </div>
-        }
-    </div>
+        </div>
+    }
 </div>
+
+@section Scripts {
+    @if (isAdmin && allLicenses != null)
+    {
+        <!-- jQuery -->
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+        <!-- DataTables -->
+        <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+        <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+        <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+        <script>
+            $(document).ready(function () {
+                $('#licensesTable').DataTable({
+                    dom: 'Bfrtip',
+                    buttons: [
+                        {
+                            extend: 'copy',
+                            text: '📋 Kopyala'
+                        },
+                        {
+                            extend: 'excel',
+                            text: '📊 Excel'
+                        },
+                        {
+                            extend: 'print',
+                            text: '🖨️ Yazdır'
+                        }
+                    ],
+                    language: {
+                        search: "Ara:",
+                        lengthMenu: "Göster _MENU_ kayıt",
+                        info: "_TOTAL_ kayıttan _START_ - _END_ arası gösteriliyor",
+                        infoEmpty: "Kayıt yok",
+                        infoFiltered: "(_MAX_ kayıt içinden filtrelendi)",
+                        zeroRecords: "Eşleşen kayıt bulunamadı",
+                        paginate: {
+                            first: "İlk",
+                            last: "Son",
+                            next: "Sonraki",
+                            previous: "Önceki"
+                        }
+                    },
+                    order: [[4, 'desc']], // Oluşturma tarihine göre sırala
+                    pageLength: 25,
+                    responsive: true
+                });
+            });
+        </script>
+    }
+
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function () {
+                // Başarılı kopyalama bildirimi
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 10px;
+                    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+                    z-index: 9999;
+                    animation: slideIn 0.3s ease-out;
+                `;
+                notification.innerHTML = '✅ Lisans key kopyalandı!';
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => notification.remove(), 300);
+                }, 2000);
+            }).catch(function (err) {
+                alert('Kopyalama başarısız: ' + err);
+            });
+        }
+
+        // Animasyonlar
+        const style = document.createElement('style');
+        style.textContent = `
+            @@keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(100px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            @@keyframes slideOut {
+                from {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(100px);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+}
