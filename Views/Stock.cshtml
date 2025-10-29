@@ -1,0 +1,43 @@
+﻿<!-- GÜNCELLEME TARİHİ: 28.10.2025 23:57 -->
+@model List<WarehouseStock>
+@{
+    ViewData["Title"] = $"{ViewBag.Warehouse.Name} - Stok Listesi";
+}
+
+<h1 style="color: red;">YENİ SAYFA YÜKLENDI - TEST 23:57</h1>
+
+<div class="page-container">
+    <div class="section-header">
+        <h1 class="section-title">📋 @ViewBag.Warehouse.Name</h1>
+        <a href="/Warehouses" class="btn btn-secondary">← Geri Dön</a>
+    </div>
+
+    @if (Model.Count > 0)
+    {
+        <table class="table" border="2">
+            <thead>
+                <tr>
+                    <th>BARKOD</th>
+                    <th>MIKTAR</th>
+                    <th>TARİH</th>
+                    <th>TRANSFER</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var stock in Model)
+                {
+                    <tr>
+                        <td>@stock.Barcode</td>
+                        <td>@stock.Quantity</td>
+                        <td>@stock.LastUpdated</td>
+                        <td>
+                            <button style="background: red; color: white; padding: 10px; font-size: 16px; font-weight: bold;">
+                                TRANSFER BUTONU
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
